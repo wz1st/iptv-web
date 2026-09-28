@@ -295,6 +295,9 @@ async function checkEngineUpdate() {
       if (!(await confirm(`${down.msg} 下载完成，是否升级？`, { okText: '确认', okVariant: 'danger' }))) return
       const up = await post(API.adminUpdata)
       notify(up?.msg || '已触发更新', up?.type || 'info', 3000)
+    } else if (down?.code === 2) {
+      // code 2 = 发布位里没有合格的新版本（检测通过、下载时被跳过）：不是故障
+      notify(down.msg || '当前已是最新版本', 'success', 3000)
     } else {
       notify(down?.msg || '下载失败', 'danger', 3000)
     }

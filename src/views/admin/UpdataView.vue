@@ -63,6 +63,12 @@ async function runUpgrade(kind) {
 
     notify('更新下载中', 'info', 1200)
     const down = await post(ep.down)
+    // code 2 = 发布位里没有合格的新版本（检测通过、下载时被跳过，例如只剩脏发布）。
+    // 这不是故障，按"已是最新"提示，别用 danger 吓人。
+    if (down?.code === 2) {
+      notify(down.msg || '当前已是最新版本', 'success', 3000)
+      return
+    }
     if (down?.code !== 1) {
       notify(down?.msg || '下载失败', 'danger', 3000)
       return
