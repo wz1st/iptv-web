@@ -1,0 +1,1212 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* 深色模式由 <html> 上的 .dark 类切换（shadcn 约定）。 */
+@custom-variant dark (&:is(.dark, [data-theme="dark"]) *);
+
+/* 1. shadcn-vue 主题变量（OKLCH） */
+:root {
+  --background: oklch(100% 0 0);
+  --foreground: oklch(14.08% 0.004 285.82);
+  --card: oklch(100% 0 0);
+  --card-foreground: oklch(14.08% 0.004 285.82);
+  --popover: oklch(100% 0 0);
+  --popover-foreground: oklch(14.08% 0.004 285.82);
+  --primary: oklch(20.47% 0.006 285.88);
+  --primary-foreground: oklch(98.48% 0 0);
+  --secondary: oklch(96.76% 0.001 286.37);
+  --secondary-foreground: oklch(20.47% 0.006 285.88);
+  --muted: oklch(96.76% 0.001 286.37);
+  --muted-foreground: oklch(55.55% 0.014 285.94);
+  --accent: oklch(96.76% 0.001 286.37);
+  --accent-foreground: oklch(20.47% 0.006 285.88);
+  --destructive: oklch(57.71% 0.215 27.33);
+  --destructive-foreground: oklch(98.48% 0 0);
+  --success: oklch(52.7% 0.154 150.07);
+  --success-foreground: oklch(98.48% 0 0);
+  /* 紧凑型状态指示灯需要比 success 文字更强的亮度分离 */
+  --status-active: oklch(72.3% 0.219 149.58);
+  --warning: oklch(55.4% 0.135 66.44);
+  --warning-foreground: oklch(98.48% 0 0);
+  --info: oklch(54.6% 0.245 262.88);
+  --info-foreground: oklch(98.48% 0 0);
+
+  /* 涨跌语义色 —— 国内习惯：涨/启用 = 红，跌/停用 = 绿。 */
+  --up: oklch(57.71% 0.215 27.33);
+  --up-foreground: oklch(98.48% 0 0);
+  --down: oklch(52.7% 0.154 150.07);
+  --down-foreground: oklch(98.48% 0 0);
+
+  --border: oklch(91.97% 0.004 286.32);
+  --input: oklch(91.97% 0.004 286.32);
+  --ring: oklch(70.9% 0.015 286.07);
+  --radius: 0.625rem;
+  --chart-1: oklch(57.42% 0.169 243.35);
+  --chart-2: oklch(76.95% 0.149 183.61);
+  --chart-3: oklch(55.75% 0.099 259.21);
+  --chart-4: oklch(70.72% 0.164 71.79);
+  --chart-5: oklch(68.95% 0.162 38.53);
+  --sidebar: oklch(98.48% 0 0);
+  --sidebar-foreground: oklch(55.55% 0.014 285.94);
+  --sidebar-primary: oklch(20.47% 0.006 285.88);
+  --sidebar-primary-foreground: oklch(98.48% 0 0);
+  --sidebar-accent: oklch(96.76% 0.001 286.37);
+  --sidebar-accent-foreground: oklch(20.47% 0.006 285.88);
+  --sidebar-border: oklch(91.97% 0.004 286.32);
+  --sidebar-ring: oklch(70.9% 0.015 286.07);
+}
+
+.dark,
+html[data-theme="dark"] {
+  --background: oklch(14.08% 0.004 285.82);
+  --foreground: oklch(98.48% 0 0);
+  --card: oklch(14.08% 0.004 285.82);
+  --card-foreground: oklch(98.48% 0 0);
+  --popover: oklch(14.08% 0.004 285.82);
+  --popover-foreground: oklch(98.48% 0 0);
+  --primary: oklch(98.48% 0 0);
+  --primary-foreground: oklch(20.47% 0.006 285.88);
+  --secondary: oklch(26.98% 0.005 286.03);
+  --secondary-foreground: oklch(98.48% 0 0);
+  --muted: oklch(26.98% 0.005 286.03);
+  --muted-foreground: oklch(70.9% 0.015 286.07);
+  --accent: oklch(26.98% 0.005 286.03);
+  --accent-foreground: oklch(98.48% 0 0);
+  --destructive: oklch(57.71% 0.215 27.33);
+  --destructive-foreground: oklch(98.48% 0 0);
+  --success: oklch(72.3% 0.219 149.58);
+  --success-foreground: oklch(14.08% 0.004 285.82);
+  --warning: oklch(76.9% 0.188 70.08);
+  --warning-foreground: oklch(14.08% 0.004 285.82);
+  --info: oklch(70.7% 0.165 254.62);
+  --info-foreground: oklch(14.08% 0.004 285.82);
+  --up: oklch(65% 0.2 27.33);
+  --up-foreground: oklch(14.08% 0.004 285.82);
+  --down: oklch(72.3% 0.219 149.58);
+  --down-foreground: oklch(14.08% 0.004 285.82);
+  --border: oklch(26.98% 0.005 286.03);
+  --input: oklch(26.98% 0.005 286.03);
+  --ring: oklch(83.91% 0.018 227.91);
+  --chart-1: oklch(65.09% 0.207 253.76);
+  --chart-2: oklch(74.84% 0.157 181.91);
+  --chart-3: oklch(98.48% 0 0);
+  --chart-4: oklch(74.75% 0.152 82.15);
+  --chart-5: oklch(68.95% 0.162 38.53);
+  --sidebar: oklch(14.08% 0.004 285.82);
+  --sidebar-foreground: oklch(70.9% 0.015 286.07);
+  --sidebar-primary: oklch(65.09% 0.207 253.76);
+  --sidebar-primary-foreground: oklch(98.48% 0 0);
+  --sidebar-accent: oklch(26.98% 0.005 286.03);
+  --sidebar-accent-foreground: oklch(98.48% 0 0);
+  --sidebar-border: oklch(26.98% 0.005 286.03);
+  --sidebar-ring: oklch(83.91% 0.018 227.91);
+}
+
+/* Register theme variables with Tailwind v4 */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-status-active: var(--status-active);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-up: var(--up);
+  --color-up-foreground: var(--up-foreground);
+  --color-down: var(--down);
+  --color-down-foreground: var(--down-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* 2. 兼容层：旧设计令牌（--c-* / --radius-sm / --shadow-* / --sidebar-w …） */
+:root {
+  --c-bg: var(--background);
+  --c-surface: var(--card);
+  --c-surface-2: var(--muted);
+  --c-border: var(--border);
+  /* 输入框/分隔线用的"重一档"边框：亮色下比 --border 深一点 */
+  --c-border-strong: var(--input);
+  --c-text: var(--foreground);
+  --c-text-2: var(--muted-foreground);
+  --c-text-3: color-mix(in oklab, var(--muted-foreground) 68%, var(--background));
+  --c-primary: var(--primary);
+  --c-primary-hover: color-mix(in oklab, var(--primary) 85%, var(--background));
+  --c-primary-soft: var(--accent);
+  --c-success: var(--success);
+  --c-success-soft: color-mix(in oklab, var(--success) 14%, var(--background));
+  --c-warning: var(--warning);
+  --c-warning-soft: color-mix(in oklab, var(--warning) 16%, var(--background));
+  --c-danger: var(--destructive);
+  --c-danger-soft: color-mix(in oklab, var(--destructive) 13%, var(--background));
+  --c-info: var(--info);
+  --c-info-soft: color-mix(in oklab, var(--info) 13%, var(--background));
+  --c-up: var(--up);
+  --c-down: var(--down);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius: 0.625rem;
+  --radius-lg: calc(var(--radius) * 1.2);
+  --shadow-sm: 0 1px 2px 0 oklch(0% 0 0 / 0.05);
+  --shadow: 0 2px 8px oklch(0% 0 0 / 0.08);
+  --shadow-lg: 0 10px 30px oklch(0% 0 0 / 0.14);
+
+  --sidebar-w: 14rem;
+  --header-h: 3.5rem;
+  /* 内容区最大宽度 —— 超宽屏下把内容收拢居中，避免表格被拉到上千像素后
+     「左看一眼、右看一眼」；窄屏无影响（取 100%）。 */
+  --content-max: 1400px;
+
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei",
+          "PingFang SC", "Hiragino Sans GB", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+               "Liberation Mono", "Courier New", monospace;
+
+  /* 统计卡的色相池 —— 与语义色分开：它们只是"让一排卡片不单调"，
+     不表达成功/失败。深色下整体提亮，避免压成一片黑。 */
+  --tone-blue: var(--info);
+  --tone-violet: oklch(54.1% 0.281 293.01);
+  --tone-cyan: oklch(58% 0.13 195);
+  --tone-amber: var(--warning);
+  --tone-brown: oklch(50% 0.075 55);
+}
+
+.dark,
+html[data-theme="dark"] {
+  --tone-violet: oklch(70% 0.2 293.01);
+  --tone-cyan: oklch(78% 0.14 195);
+  --tone-brown: oklch(72% 0.09 55);
+}
+
+/* 3. 基础样式 */
+* {
+  border-color: var(--border);
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font);
+  font-size: 0.875rem;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* 这条 reset **必须在 @layer base 里**： */
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--muted-foreground) 60%, transparent);
+}
+
+@layer components {
+  /* 点阵背景：登录页与安装向导共用 */
+  .dot-grid-bg {
+    background-color: var(--muted);
+    background-image: radial-gradient(circle, color-mix(in oklab, var(--muted-foreground) 35%, transparent) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+}
+
+/* 设置类页面的密度：卡片更紧凑，一屏能看到更多字段。 */
+.settings-dense [data-slot="card"] {
+  gap: 1rem;
+  padding-block: 1rem;
+}
+.settings-dense [data-slot="card-header"],
+.settings-dense [data-slot="card-content"],
+.settings-dense [data-slot="card-footer"] {
+  padding-inline: 1rem;
+}
+.settings-dense [data-slot="card-header"].border-b {
+  padding-bottom: 1rem;
+}
+.settings-dense [data-slot="card-footer"].border-t {
+  padding-top: 1rem;
+}
+
+/* 4. 通用辅助类（旧的 u-* 工具类） */
+.u-flex { display: flex; }
+.u-flex-center { display: flex; align-items: center; }
+.u-flex-between { display: flex; align-items: center; justify-content: space-between; }
+.u-flex-wrap { flex-wrap: wrap; }
+.u-gap-4 { gap: 4px; }
+.u-gap-8 { gap: 8px; }
+.u-gap-12 { gap: 12px; }
+.u-gap-16 { gap: 16px; }
+.u-mt-8 { margin-top: 8px; }
+.u-mt-12 { margin-top: 12px; }
+.u-mt-16 { margin-top: 16px; }
+.u-mb-0 { margin-bottom: 0; }
+.u-mb-8 { margin-bottom: 8px; }
+.u-mb-12 { margin-bottom: 12px; }
+.u-mb-16 { margin-bottom: 16px; }
+.u-mr-8 { margin-right: 8px; }
+.u-mr-12 { margin-right: 12px; }
+.u-w-full { width: 100%; }
+.u-text-center { text-align: center; }
+.u-text-right { text-align: right; }
+.u-text-2 { color: var(--c-text-2); }
+.u-text-3 { color: var(--c-text-3); }
+.u-text-sm { font-size: 12px; }
+.u-text-danger { color: var(--c-danger); }
+.u-text-success { color: var(--c-success); }
+.u-text-warning { color: var(--c-warning); }
+
+/* 频道延迟分档（EPG管理 的「延迟」列，见 utils/latency.js）。 */
+.lat { font-variant-numeric: tabular-nums; }
+.lat--ok { color: var(--c-success); }
+.lat--warn { color: var(--c-warning); }
+.lat--bad { color: var(--c-danger); }
+.lat--none { color: var(--muted-foreground); }
+.u-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.u-mono { font-family: var(--font-mono); }
+
+/* 5. 自研轻量组件样式：Button / Card / Table / Form / Modal / Pagination … */
+
+/* ---------- Button ---------- */
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.4;
+  color: var(--foreground);
+  background: var(--background);
+  border: 1px solid var(--input);
+  border-radius: var(--radius-md);
+  box-shadow: 0 1px 2px 0 oklch(0% 0 0 / 0.04);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s, color .15s, opacity .15s;
+  user-select: none;
+}
+.ui-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.ui-btn:active:not(:disabled) { transform: translateY(1px); }
+.ui-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* 实心变体的 hover：**只让底色变淡，前景色一律不动**。 */
+.ui-btn--primary {
+  color: var(--primary-foreground);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.ui-btn--primary:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--primary) 88%, var(--background));
+  border-color: color-mix(in oklab, var(--primary) 88%, var(--background));
+  color: var(--primary-foreground);
+}
+
+.ui-btn--success {
+  color: var(--success-foreground);
+  background: var(--success);
+  border-color: var(--success);
+}
+.ui-btn--success:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--success) 88%, var(--background));
+  border-color: color-mix(in oklab, var(--success) 88%, var(--background));
+  color: var(--success-foreground);
+}
+
+.ui-btn--warning {
+  color: var(--warning-foreground);
+  background: var(--warning);
+  border-color: var(--warning);
+}
+.ui-btn--warning:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--warning) 88%, var(--background));
+  border-color: color-mix(in oklab, var(--warning) 88%, var(--background));
+  color: var(--warning-foreground);
+}
+
+.ui-btn--danger {
+  color: var(--destructive-foreground);
+  background: var(--destructive);
+  border-color: var(--destructive);
+}
+.ui-btn--danger:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--destructive) 88%, var(--background));
+  border-color: color-mix(in oklab, var(--destructive) 88%, var(--background));
+  color: var(--destructive-foreground);
+}
+
+.ui-btn--info {
+  color: var(--info-foreground);
+  background: var(--info);
+  border-color: var(--info);
+}
+.ui-btn--info:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--info) 88%, var(--background));
+  border-color: color-mix(in oklab, var(--info) 88%, var(--background));
+  color: var(--info-foreground);
+}
+
+.ui-btn--text {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  padding: 4px 8px;
+}
+.ui-btn--text:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-foreground);
+}
+
+.ui-btn--xs { padding: 2px 8px; font-size: 12px; border-radius: var(--radius-sm); }
+.ui-btn--sm { padding: 5px 11px; font-size: 12.5px; }
+.ui-btn--lg { padding: 10px 20px; font-size: 15px; }
+.ui-btn--block { width: 100%; }
+
+/* ---------- Card ---------- */
+.ui-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 1px 2px 0 oklch(0% 0 0 / 0.05);
+  overflow: hidden;
+}
+.ui-card + .ui-card { margin-top: 16px; }
+/* 栅格里的卡片间距由 gap 负责 —— 相邻兄弟选择器会只给第 2/4/6 个卡片加外边距，
+   表现为「偶数列整体下沉 16px、行高被撑开」。这里显式清零。 */
+.ui-grid > .ui-card + .ui-card { margin-top: 0; }
+.ui-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.ui-card__header h4 { font-size: 14.5px; }
+.ui-card__body { padding: 18px; }
+.ui-card__body--flush { padding: 0; }
+.ui-card__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+}
+/* 表格下方的批量操作条（设备列表 / 设备授权）—— 与表格同一张卡片，靠底色区分 */
+.ui-bulkbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 13px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--muted);
+}
+
+/* ---------- Section（分节标题）----------
+   用于同一页面里若干组卡片之间的分隔，替代"建一张只有标题的空卡片"的写法。 */
+.ui-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 20px 0 12px;
+}
+.ui-section:first-child { margin-top: 0; }
+.ui-section__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+.ui-section__title::before {
+  content: '';
+  width: 3px;
+  height: 15px;
+  border-radius: 2px;
+  background: var(--primary);
+}
+.ui-section__desc { font-size: 12px; color: var(--c-text-3); }
+
+/* ---------- Table ---------- */
+.ui-table-wrap { width: 100%; overflow-x: auto; }
+.ui-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.ui-table th,
+.ui-table td {
+  padding: 9px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.ui-table thead th {
+  font-weight: 500;
+  color: var(--muted-foreground);
+  background: var(--card);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.ui-table tbody tr { transition: background .12s; }
+.ui-table tbody tr:hover { background: color-mix(in oklab, var(--muted) 60%, transparent); }
+.ui-table td.u-center, .ui-table th.u-center { text-align: center; }
+/* 空数据不是错误 —— 用中性灰；确实要表达"读取失败"时加 --danger */
+.ui-table .ui-table__empty {
+  text-align: center;
+  color: var(--muted-foreground);
+  padding: 26px 12px;
+  font-size: 13.5px;
+}
+.ui-table .ui-table__empty--danger { color: var(--destructive); }
+/* 加载中 —— 区别于空数据，带转圈。弹窗里也会用（div 形态），所以基础样式不带 .ui-table 前缀 */
+.ui-table__status {
+  text-align: center;
+  color: var(--muted-foreground);
+  padding: 22px 12px;
+  font-size: 13px;
+}
+/* 表格里的 td 需要更高权重：`.ui-table td { text-align: left }`（0,1,1）
+   会压过单独的 `.ui-table__status`（0,1,0），导致这一行靠左。 */
+.ui-table .ui-table__status { text-align: center; padding: 26px 12px; }
+.ui-table__status .ui-spinner {
+  display: inline-block;
+  width: 16px; height: 16px;
+  border-width: 2px;
+  vertical-align: -3px;
+  margin-right: 7px;
+}
+.ui-table__actions { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 4px; }
+/* 行内危险动作（删除等）与普通动作拉开距离，降低误点概率 */
+.ui-table__actions > .ui-btn--danger:not(:first-child) { margin-left: 8px; }
+/* 双击可编辑的行 —— 给一点可发现性。 */
+.ui-table tr.is-editable:hover > td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
+/* 工具栏右侧的操作提示文案 */
+.ui-hint { font-size: 12px; color: var(--c-text-3); }
+
+/* 只读展示（表单里"改不了"的字段不再画成输入框） */
+.ui-kv {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--c-text-2);
+}
+.ui-kv:last-child { margin-bottom: 0; }
+.ui-kv__v { color: var(--c-text); font-weight: 500; }
+.ui-kv__v--mono { font-family: var(--font-mono); font-size: 12.5px; }
+/* 只读的多行内容（订阅地址这类）：不再是 textarea，但依旧可手动选中。
+   复制入口改成行尾的「复制」按钮（见 MealsView.vue），不再依赖双击手势。 */
+.ui-ro {
+  padding: 7px 11px;
+  border: 1px dashed var(--input);
+  border-radius: var(--radius-md);
+  background: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--c-text);
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: text;
+  cursor: text;
+}
+.ui-ro--mono { font-family: var(--font-mono); font-size: 12.5px; }
+.ui-ro--sm { padding: 5px 9px; font-size: 12.5px; }
+
+/* 只读值的图标按钮（复制 / 外链 这类） */
+.ui-ibtn {
+  color: var(--foreground);
+  cursor: pointer;
+  /* 宿主块（.ui-ro）是 user-select:text，按钮不该被一起选中 */
+  user-select: none;
+}
+.ui-ibtn:hover:not(:disabled),
+.ui-ibtn:focus-visible:not(:disabled) {
+  background: color-mix(in oklab, var(--foreground) 12%, var(--muted));
+  color: var(--foreground);
+}
+/* 图标按钮没有文字，`title` / `aria-label` 是它唯一的可读名； */
+
+/* 台标（logo）单元格 */
+.logo-cell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.logo-cell__img {
+  display: block;
+  height: 26px;
+  max-width: 62px;
+  object-fit: contain;
+  background: #000;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+/* 「更换」按钮在 2026-09-23 移除：它压在缩略图左下角、与"点击放大"热区重叠， */
+.logo-cell__del {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 15px;
+  height: 15px;
+  line-height: 14px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--destructive-foreground);
+  background: var(--destructive);
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.logo-cell:hover .logo-cell__del { opacity: 1; }
+/* 没有台标时的占位按钮：虚线上传框 */
+.logo-cell__add {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  background: transparent;
+  border: 1px dashed var(--input);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.logo-cell__add:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+  border-style: solid;
+  background: var(--accent);
+}
+.ui-table--bordered th, .ui-table--bordered td { border: 1px solid var(--border); }
+
+/* 可排序表头 */
+.ui-th-sort { cursor: pointer; user-select: none; }
+.ui-th-sort:hover { color: var(--foreground); }
+.ui-th-sort__mark { font-size: 10px; margin-left: 3px; color: var(--muted-foreground); }
+
+/* ---------- Form ---------- */
+.ui-field { margin-bottom: 14px; }
+.ui-field__label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--foreground);
+}
+.ui-input,
+.ui-select,
+.ui-textarea {
+  width: 100%;
+  padding: 7px 11px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--foreground);
+  background: var(--background);
+  border: 1px solid var(--input);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.ui-input::placeholder,
+.ui-textarea::placeholder { color: var(--muted-foreground); }
+.ui-input:focus,
+.ui-select:focus,
+.ui-textarea:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 25%, transparent);
+}
+.ui-input:disabled, .ui-select:disabled, .ui-textarea:disabled {
+  background: var(--muted);
+  color: var(--muted-foreground);
+  cursor: not-allowed;
+}
+.ui-input--sm { padding: 4px 8px; font-size: 12.5px; }
+.ui-textarea { resize: vertical; min-height: 78px; line-height: 1.6; }
+.ui-input--mono { font-family: var(--font-mono); font-size: 12.5px; }
+
+.ui-inline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ui-inline > .ui-field { margin-bottom: 0; }
+/* .ui-kv 自带 10px 下外边距（竖排时用）。放进 .ui-inline 后这 10px 会变成 */
+.ui-inline > .ui-kv { margin-bottom: 0; }
+
+.ui-help { display: block; margin-top: 5px; font-size: 12px; color: var(--muted-foreground); line-height: 1.55; }
+
+/* 功能描述改成**纯黑**（2026-09-23 按反馈）。12px 的 --muted-foreground 在浅色 */
+.ui-help--ink { color: #000; }
+.dark .ui-help--ink,
+html[data-theme="dark"] .ui-help--ink { color: #fff; }
+
+/* Checkbox / Switch */
+.ui-check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; font-size: 13px; }
+.ui-check input { width: 15px; height: 15px; accent-color: var(--primary); cursor: pointer; margin: 0; }
+.ui-check input:disabled { cursor: not-allowed; }
+
+.ui-switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; }
+.ui-switch input { display: none; }
+.ui-switch__track {
+  width: 38px; height: 21px; border-radius: 11px;
+  background: var(--input); position: relative; transition: background .2s; flex: none;
+}
+.ui-switch__track::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 17px; height: 17px; border-radius: 50%; background: var(--background);
+  transition: transform .2s; box-shadow: 0 1px 2px 0 oklch(0% 0 0 / 0.2);
+}
+.ui-switch input:checked + .ui-switch__track { background: var(--primary); }
+.ui-switch input:checked + .ui-switch__track::after { transform: translateX(17px); }
+.ui-switch input:disabled + .ui-switch__track { opacity: .5; cursor: not-allowed; }
+
+/* ---------- Badge / Tag ---------- */
+.ui-badge {
+  display: inline-flex; align-items: center;
+  padding: 1px 8px; border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font-size: 11.5px; font-weight: 500; line-height: 1.7;
+}
+.ui-badge--primary { color: var(--foreground); background: var(--muted); }
+.ui-badge--success { color: var(--c-success); background: var(--c-success-soft); border-color: color-mix(in oklab, var(--c-success) 25%, transparent); }
+.ui-badge--warning { color: var(--c-warning); background: var(--c-warning-soft); border-color: color-mix(in oklab, var(--c-warning) 25%, transparent); }
+.ui-badge--danger { color: var(--c-danger); background: var(--c-danger-soft); border-color: color-mix(in oklab, var(--c-danger) 25%, transparent); }
+.ui-badge--info { color: var(--c-info); background: var(--c-info-soft); border-color: color-mix(in oklab, var(--c-info) 25%, transparent); }
+.ui-badge--muted { color: var(--muted-foreground); background: var(--muted); border-color: var(--border); }
+
+/* ---------- Modal ---------- */
+.ui-modal-mask {
+  position: fixed; inset: 0; z-index: 1000;
+  background: color-mix(in oklab, var(--foreground) 45%, transparent);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 5vh 16px; overflow-y: auto;
+}
+/* 确认框（ConfirmHost）单独抬一档 —— 它必须压在「触发它的那个弹窗」之上。 */
+.ui-modal-mask--confirm { z-index: 1300; }
+.ui-modal {
+  background: var(--popover);
+  color: var(--popover-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 10px 40px oklch(0% 0 0 / 0.18);
+  width: 100%; max-width: 520px;
+  display: flex; flex-direction: column;
+  max-height: 90vh;
+  animation: ui-modal-in .18s ease-out;
+}
+.ui-modal--lg { max-width: 780px; }
+.ui-modal--xl { max-width: min(1180px, 94vw); }
+@keyframes ui-modal-in {
+  from { opacity: 0; transform: translateY(-14px) scale(.985); }
+  to { opacity: 1; transform: none; }
+}
+.ui-modal__header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+.ui-modal__title { font-size: 15px; font-weight: 600; }
+.ui-modal__close {
+  border: none; background: transparent; cursor: pointer;
+  font-size: 21px; line-height: 1; color: var(--muted-foreground);
+  padding: 0 4px; border-radius: var(--radius-sm);
+}
+.ui-modal__close:hover {
+  color: var(--foreground);
+  background: var(--accent);
+}
+.ui-modal__body { padding: 18px; overflow-y: auto; flex: 1 1 auto; }
+.ui-modal__footer {
+  display: flex; align-items: center; justify-content: flex-end; gap: 9px;
+  padding: 13px 18px; border-top: 1px solid var(--border);
+  flex: none;
+}
+
+/* ---------- 全局 loading ---------- */
+.ui-loading-layer {
+  position: fixed; inset: 0; z-index: 2900;
+  background: color-mix(in oklab, var(--background) 60%, transparent);
+  display: flex; align-items: center; justify-content: center;
+}
+.ui-spinner {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 3px solid var(--border);
+  border-top-color: var(--foreground);
+  animation: ui-spin .7s linear infinite;
+}
+@keyframes ui-spin { to { transform: rotate(360deg); } }
+
+/* ---------- Pagination ---------- */
+.ui-pager {
+  display: flex; align-items: center; justify-content: center;
+  gap: 6px; flex-wrap: wrap; padding: 14px 6px 4px;
+}
+.ui-pager__item {
+  min-width: 32px; height: 32px; padding: 0 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--background); color: var(--foreground); cursor: pointer;
+  font-size: 12.5px; user-select: none;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.ui-pager__item:hover:not(.is-disabled):not(.is-active) { background: var(--accent); }
+.ui-pager__item.is-active {
+  background: var(--primary); border-color: var(--primary);
+  color: var(--primary-foreground);
+}
+.ui-pager__item.is-disabled { opacity: .45; cursor: not-allowed; }
+.ui-pager__info { font-size: 12.5px; color: var(--muted-foreground); margin: 0 6px; }
+.ui-pager__jump { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--muted-foreground); }
+.ui-pager__jump input { width: 46px; text-align: center; }
+
+/* ---------- Alert（页内提示条） ---------- */
+.ui-alert {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 10px 14px; border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font-size: 13px; line-height: 1.6;
+}
+/* 提示条里放转圈时自动缩小对齐 */
+.ui-alert .ui-spinner { width: 14px; height: 14px; border-width: 2px; margin-top: 3px; flex: none; }
+.ui-alert--info { color: var(--c-info); background: var(--c-info-soft); border-color: color-mix(in oklab, var(--c-info) 22%, transparent); }
+.ui-alert--success { color: var(--c-success); background: var(--c-success-soft); border-color: color-mix(in oklab, var(--c-success) 22%, transparent); }
+.ui-alert--warning { color: var(--c-warning); background: var(--c-warning-soft); border-color: color-mix(in oklab, var(--c-warning) 22%, transparent); }
+.ui-alert--danger { color: var(--c-danger); background: var(--c-danger-soft); border-color: color-mix(in oklab, var(--c-danger) 22%, transparent); }
+
+/* ---------- Tag selector ---------- */
+.ui-tagselect { position: relative; }
+.ui-tagselect__box {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 5px;
+  min-height: 34px; padding: 4px 8px;
+  border: 1px solid var(--input); border-radius: var(--radius-md);
+  background: var(--background); cursor: pointer;
+}
+.ui-tagselect__box:hover { border-color: var(--ring); }
+.ui-tagselect__tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 1px 6px; border-radius: var(--radius-sm); font-size: 12px;
+  color: var(--foreground); background: var(--muted);
+}
+.ui-tagselect__tag button {
+  border: none; background: transparent; cursor: pointer;
+  color: inherit; font-size: 14px; line-height: 1; padding: 0;
+}
+.ui-tagselect__ph { color: var(--muted-foreground); font-size: 12.5px; }
+/* 面板被 Teleport 到 body（见 TagSelect.vue）：left / width / top|bottom */
+.ui-tagselect__drop {
+  position: fixed; z-index: 1500;
+  background: var(--popover); color: var(--popover-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg); box-shadow: 0 10px 30px oklch(0% 0 0 / 0.14);
+  max-height: min(260px, 60vh); overflow-y: auto; padding: 5px;
+}
+.ui-tagselect__opt {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 9px; border-radius: var(--radius-md);
+  cursor: pointer; font-size: 12.5px;
+}
+.ui-tagselect__opt:hover { background: var(--accent); }
+.ui-tagselect__opt.is-active { background: var(--accent); color: var(--accent-foreground); font-weight: 500; }
+.ui-tagselect__opt input { accent-color: var(--primary); margin: 0; }
+.ui-tagselect__logo { height: 18px; width: auto; border-radius: 2px; background: #000; }
+
+/* Stat card（仪表盘） */
+.ui-stat {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 16px;
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px 0 oklch(0% 0 0 / 0.05);
+  min-height: 84px;
+  --stat-tone: var(--foreground);
+}
+.ui-stat__label {
+  font-size: 12.5px; color: var(--muted-foreground);
+  margin: 0 0 5px; min-height: 2.4em;
+}
+.ui-stat__value { font-size: 25px; font-weight: 700; line-height: 1.15; color: var(--stat-tone); }
+.ui-stat__icon {
+  width: 40px; height: 40px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-lg);
+  background: color-mix(in oklab, var(--stat-tone) 12%, transparent);
+  color: var(--stat-tone);
+  font-size: 19px;
+}
+/* 新旧色号都保留：视图里写的是 primary/purple/cyan/info/warning/brown */
+.ui-stat--primary { --stat-tone: var(--primary); }
+.ui-stat--purple  { --stat-tone: var(--tone-violet); }
+.ui-stat--cyan    { --stat-tone: var(--tone-cyan); }
+.ui-stat--info    { --stat-tone: var(--tone-blue); }
+.ui-stat--warning { --stat-tone: var(--tone-amber); }
+.ui-stat--brown   { --stat-tone: var(--tone-brown); }
+/* 可点击跳转的统计卡 */
+.ui-stat--link { cursor: pointer; transition: transform .15s, box-shadow .15s, background .15s; }
+.ui-stat--link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px oklch(0% 0 0 / 0.14);
+  background: var(--accent);
+}
+.ui-stat--link:active { transform: translateY(0); }
+.ui-stat--link:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* ---------- Grid ---------- */
+.ui-grid { display: grid; gap: 16px; }
+.ui-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ui-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* 统计卡：auto-fit + 较小的最小宽度，让 6 张卡在常见宽度下排成一行
+   （空闲列会自动收起，剩几列就撑满几列） */
+.ui-grid--stats { grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); }
+@media (max-width: 900px) {
+  .ui-grid--2, .ui-grid--3 { grid-template-columns: 1fr; }
+}
+
+/* Tabs */
+.ui-tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: none;
+  border-radius: var(--radius-lg);
+  background: var(--muted);
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.ui-tabs__item {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--muted-foreground);
+  border-radius: var(--radius-md);
+  margin: 0;
+  white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+.ui-tabs__item:hover { color: var(--foreground); }
+.ui-tabs__item.is-active {
+  color: var(--foreground);
+  background: var(--background);
+  box-shadow: 0 1px 2px 0 oklch(0% 0 0 / 0.08);
+  font-weight: 500;
+}
+
+/* 标签条与内容区的间距。 */
+.ui-tabpanes { margin-top: 16px; }
+
+/* 6. Markdown 渲染区（README / ChangeLog） */
+.md-body {
+  font-size: 0.875rem;
+  line-height: 1.75;
+  word-break: break-word;
+}
+.md-body > :first-child {
+  margin-top: 0;
+}
+.md-body h1,
+.md-body h2,
+.md-body h3,
+.md-body h4 {
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 1.4em 0 0.6em;
+}
+.md-body h1 { font-size: 1.35rem; }
+.md-body h2 {
+  font-size: 1.15rem;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border);
+}
+.md-body h3 { font-size: 1rem; }
+.md-body h4 { font-size: 0.925rem; }
+.md-body p { margin: 0.65em 0; }
+.md-body ul,
+.md-body ol {
+  margin: 0.65em 0;
+  padding-left: 1.4em;
+}
+.md-body ul { list-style: disc; }
+.md-body ol { list-style: decimal; }
+.md-body li { margin: 0.25em 0; }
+.md-body a {
+  color: var(--info);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.md-body blockquote {
+  margin: 0.8em 0;
+  padding: 0.1em 0 0.9em 0.9em;
+  border-left: 3px solid var(--border);
+  color: var(--muted-foreground);
+}
+.md-body code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.85em;
+  padding: 0.12em 0.36em;
+  border-radius: var(--radius-sm);
+  background: var(--muted);
+}
+.md-body pre {
+  margin: 0.8em 0;
+  padding: 0.85em 1em;
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  background: var(--muted);
+}
+.md-body pre code {
+  padding: 0;
+  background: transparent;
+}
+.md-body table {
+  width: 100%;
+  margin: 0.8em 0;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+.md-body th,
+.md-body td {
+  padding: 0.45em 0.7em;
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.md-body th {
+  background: var(--muted);
+  font-weight: 600;
+}
+.md-body img {
+  max-width: 100%;
+  border-radius: var(--radius-md);
+}
+.md-body hr {
+  margin: 1.4em 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+/* 打赏收款码：宽屏并排，窄屏（手机）改成上下分布。 */
+.pay-qr {
+  display: flex;
+  justify-content: center;
+  gap: 50px;
+  flex-wrap: wrap;
+  /* 「赞助作者」跳过来时把元素对齐到视口顶部，但要让出 AdminLayout
+     的 h-14(顶栏) + h-12(粘性面包屑) = 104px，外加一点呼吸空间。 */
+  scroll-margin-top: 112px;
+}
+.pay-qr img { width: 300px; }
+@media (max-width: 640px) {
+  .pay-qr {
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+  .pay-qr img { width: min(100%, 300px); }
+}
+
+/* 7. 台标放大预览（点击缩略图 → 居中大图） */
+.logo-cell__img { cursor: zoom-in; }
+
+.img-zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 2600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4vh 4vw;
+  background: color-mix(in oklab, #000 72%, transparent);
+  cursor: zoom-out;
+}
+/* panel 是「图 + 下方操作按钮」的竖排容器。 */
+.img-zoom__panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  cursor: default;
+}
+.img-zoom__img {
+  max-width: min(62vw, 720px);
+  max-height: 62vh;
+  object-fit: contain;
+  /* 台标多为透明 PNG：垫一层卡片底色，深浅主题下都能看清轮廓 */
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 18px 48px -12px color-mix(in oklab, #000 55%, transparent);
+  cursor: default;
+}
+/* 操作按钮行：删除/更换等。保持居中，与图同宽感。
+   层级无需额外处理 —— 它在 .img-zoom__panel 内，面板已 @click.stop。 */
+.img-zoom__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+.img-zoom__hint {
+  position: absolute;
+  bottom: 3vh;
+  font-size: 12px;
+  color: color-mix(in oklab, #fff 78%, transparent);
+  user-select: none;
+}
+
+/* 8. 触屏支持（触屏电脑 / 平板 / 手机） */
+
+/* 悬停才出现的控件：只要有触摸能力就常显（触摸屏上没有 hover 这回事）。 */
+@media (any-pointer: coarse) {
+  .logo-cell__del { opacity: 1; }
+}
+
+/* 触摸设备上消除 300ms 点击延迟 */
+.ui-btn,
+.ui-ibtn,
+.ui-tabs__item,
+.ui-pager__item,
+.ui-tagselect__opt,
+.logo-cell__del,
+.logo-cell__add { touch-action: manipulation; }
+
+@media (pointer: coarse) {
+  /* 触摸设备上的命中目标下限。刻意改**真实尺寸**、而不是用伪元素撑一个隐形层： */
+  .ui-btn { min-height: 40px; padding-left: 12px; padding-right: 12px; }
+  .ui-btn--xs,
+  .ui-btn--sm { min-height: 34px; padding-left: 10px; padding-right: 10px; }
+  .ui-tabs__item { min-height: 40px; display: inline-flex; align-items: center; }
+  .ui-pager__item { min-height: 40px; min-width: 40px; }
+  .ui-input,
+  .ui-select { min-height: 40px; }
+  .ui-tagselect__opt { min-height: 40px; }
+  .logo-cell__add { min-height: 34px; }
+  .logo-cell__del { width: 22px; height: 22px; line-height: 21px; top: -9px; right: -9px; }
+
+  /* Switch 孤零零占一格、四周没有相邻可点元素，所以这里用"隐形层撑大命中区"
+     是安全的（不同于上面并排的按钮）。 */
+  [data-slot='switch'] { position: relative; }
+  [data-slot='switch']::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+  }
+}
+
+/* 窄屏（手机竖屏）：放大图占满更多宽度，表格靠 .ui-table-wrap 横向滚动 */
+@media (max-width: 640px) {
+  .img-zoom { padding: 3vh 3vw; }
+  .img-zoom__img { max-width: 88vw; max-height: 70vh; }
+}
+
+/* 引擎日志弹窗（进阶功能 → 查看日志） */
+.eng-log__bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  /* 刻意**不用** .ui-help--ink：那是"进阶功能四张卡的功能描述改纯黑"专用
+     （产物层断言 verify_ui.sh 会数它的个数），复用会让那条断言的含义跑偏。 */
+  color: var(--foreground);
+}
+.eng-log__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  animation: eng-log-pulse 2s ease-in-out infinite;
+}
+@keyframes eng-log-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .25; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .eng-log__dot { animation: none; }
+}
+/* 日志按行追加，正文不需要换行折断（一行就是一条记录） */
+.eng-log__box {
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+  min-height: 46vh;
+}
