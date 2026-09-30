@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { installed, isCustom } from '@/utils/site'
+import { installed } from '@/utils/site'
 
 // 前端路由表 —— 与后端 router/apiRouter.go 的接口表互不重叠：
 
@@ -80,7 +80,6 @@ const routes = [
       { path: 'dlEdit', name: 'admin-dl-edit', component: () => import('@/views/admin/system/DlEditView.vue'), meta: { title: '下载页编辑' } },
       // 进阶功能：授权引擎。改造前路径是 /admin/license，接口与二进制已改名 engine
       { path: 'engine', name: 'admin-engine', component: () => import('@/views/admin/EngineView.vue'), meta: { title: '进阶功能' } },
-      { path: 'updata', name: 'admin-updata', component: () => import('@/views/admin/UpdataView.vue'), meta: { title: '在线升级' } },
       { path: 'about', name: 'admin-about', component: () => import('@/views/admin/AboutView.vue'), meta: { title: '升级日志' } },
     ],
   },
@@ -107,10 +106,6 @@ router.beforeEach((to) => {
   }
 
   if (isWizard) return '/'
-
-  // 定制分支隐藏「在线升级」：菜单不画，直接敲 URL 也一样进不去。
-  // 定制包不走主线的发布位，这条链路留着只会让人误点。
-  if (isCustom.value && path === '/admin/updata') return '/admin/index'
 
   return true
 })

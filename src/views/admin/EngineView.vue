@@ -285,27 +285,6 @@ async function checkProxy() {
   }
 }
 
-async function checkEngineUpdate() {
-  const res = await post(API.adminUpdataCheckEngine)
-  if (res?.code === 1) {
-    if (!(await confirm(`${res.msg}，是否下载？`, { okText: '确认', okVariant: 'danger' }))) return
-    notify('更新下载中', 'info', 1200)
-    const down = await post(API.adminUpdataDownEngine)
-    if (down?.code === 1) {
-      if (!(await confirm(`${down.msg} 下载完成，是否升级？`, { okText: '确认', okVariant: 'danger' }))) return
-      const up = await post(API.adminUpdata)
-      notify(up?.msg || '已触发更新', up?.type || 'info', 3000)
-    } else if (down?.code === 2) {
-      // code 2 = 发布位里没有合格的新版本（检测通过、下载时被跳过）：不是故障
-      notify(down.msg || '当前已是最新版本', 'success', 3000)
-    } else {
-      notify(down?.msg || '下载失败', 'danger', 3000)
-    }
-  } else {
-    notify(res?.msg || '检查更新失败', res?.type || 'danger', 3000)
-  }
-}
-
 /* ---------------- 授权账号 ---------------- */
 async function doRegister() {
   const f = registerForm.value
@@ -401,9 +380,6 @@ async function doLogout() {
           </p>
           <p class="ui-kv">
             引擎版本：<span class="ui-kv__v">{{ d.version || '-' }}</span>
-            <button class="ui-btn ui-btn--info ui-btn--xs" type="button" style="margin-left: 10px" @click="checkEngineUpdate">
-              检测更新
-            </button>
           </p>
         </div>
       </div>

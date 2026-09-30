@@ -76,8 +76,8 @@ const MENU_GROUPS = computed(() => [
   },
 ])
 
-// 「系统」组的条目。定制分支刻意只留 mytv 那条在线升级链路（在客户端设置里），
-// 后台自己的「在线升级」入口整条不显示 —— 定制包不走主线的发布位。
+// 「系统」组的条目。定制分支已把后台自己的「在线升级」入口整条删除 ——
+// 定制包不走主线的发布位，唯一的在线链路是客户端设置里的 mytv 编译基底。
 function sysItems() {
   const list = [
     // 系统公告已并入「客户端设置」，这里只剩管理员设置
@@ -85,8 +85,6 @@ function sysItems() {
   ]
   if (isCustom.value) {
     list.push({ key: 'dlEdit', label: '下载页编辑', icon: 'palette', paths: ['/admin/dlEdit'] })
-  } else {
-    list.push({ key: 'updata', label: '在线升级', icon: 'refresh', paths: ['/admin/updata'] })
   }
   return list
 }

@@ -31,7 +31,6 @@ export const API = {
   // 下载页编辑（定制授权专属）：开关 + 站内文件树
   adminDlStatus: '/api/dl/status',
   adminAdminsData: '/api/admins/data',
-  adminUpdataData: '/api/updata/data',
   adminAboutData: '/api/about/data',
   adminEngineData: '/api/engine/data',
 
@@ -41,13 +40,6 @@ export const API = {
   adminClientBuildStatus: '/api/client/buildStatus',
   adminClientMyTVBuildStatus: '/api/clientMyTV/buildStatus',
   adminClientCustomBuildStatus: '/api/clientCustom/buildStatus',
-  adminUpdataCheckWeb: '/api/updata/checkWeb',
-  adminUpdataCheckFront: '/api/updata/checkFront',
-  adminUpdataCheckEngine: '/api/updata/checkEngine',
-  adminUpdataDownWeb: '/api/updata/downWeb',
-  adminUpdataDownFront: '/api/updata/downFront',
-  adminUpdataDownEngine: '/api/updata/downEngine',
-  adminUpdata: '/api/updata/run',
 
   // ---- 文件上传（multipart/form-data，不参与 JSON 化）----
   adminClientUploadIcon: '/api/client/uploadIcon',
