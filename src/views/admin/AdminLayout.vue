@@ -21,7 +21,7 @@ import {
 import NavMenuButton from '@/components/admin/NavMenuButton.vue'
 import NavLink from '@/components/admin/NavLink.vue'
 import { Sun, Moon, LogOut, Download } from 'lucide-vue-next'
-import { siteName, version } from '@/utils/site'
+import { siteName, version, isCustom } from '@/utils/site'
 import { API } from '@/api/endpoints'
 import { confirm } from '@/utils/confirm'
 import { clearLicenseNoticeSeen } from '@/utils/licenseNotice'
@@ -35,7 +35,11 @@ const { isDark, toggleTheme } = useTheme()
 
 // 菜单分组。title 为空表示这一组不画组标题 —— 顶部的四个单页和
 // 底部的两个入口都是"自成一组"的，硬起个名字反而多余。
-const MENU_GROUPS = [
+//
+// 写成 computed 是因为「系统」组里有两项要看授权等级：
+//   定制分支（isCustom）隐藏「在线升级」，另加一项「下载页编辑」。
+// 其余分组与授权无关，但同一个数组里放，就一起跟着算。
+const MENU_GROUPS = computed(() => [
   {
     key: 'main',
     title: '',
@@ -59,11 +63,7 @@ const MENU_GROUPS = [
   {
     key: 'sys',
     title: '系统',
-    items: [
-      // 系统公告已并入「客户端设置」，这里只剩管理员设置
-      { key: 'admins', label: '管理员设置', icon: 'user', paths: ['/admin/admins'] },
-      { key: 'updata', label: '在线升级', icon: 'refresh', paths: ['/admin/updata'] },
-    ],
+    items: sysItems(),
   },
   {
     key: 'ext',
@@ -74,17 +74,32 @@ const MENU_GROUPS = [
       { key: 'about', label: '升级日志', icon: 'info', paths: ['/admin/about'] },
     ],
   },
-]
+])
 
-const ALL_ITEMS = MENU_GROUPS.flatMap((g) => g.items)
+// 「系统」组的条目。定制分支刻意只留 mytv 那条在线升级链路（在客户端设置里），
+// 后台自己的「在线升级」入口整条不显示 —— 定制包不走主线的发布位。
+function sysItems() {
+  const list = [
+    // 系统公告已并入「客户端设置」，这里只剩管理员设置
+    { key: 'admins', label: '管理员设置', icon: 'user', paths: ['/admin/admins'] },
+  ]
+  if (isCustom.value) {
+    list.push({ key: 'dlEdit', label: '下载页编辑', icon: 'palette', paths: ['/admin/dlEdit'] })
+  } else {
+    list.push({ key: 'updata', label: '在线升级', icon: 'refresh', paths: ['/admin/updata'] })
+  }
+  return list
+}
+
+const ALL_ITEMS = computed(() => MENU_GROUPS.value.flatMap((g) => g.items))
 
 const isActive = (item) => item.paths.includes(route.path)
 
 // 当前页标题 + 所属分组 —— 面包屑用。
 const currentPage = computed(() => {
-  const hit = ALL_ITEMS.find(isActive)
+  const hit = ALL_ITEMS.value.find(isActive)
   if (!hit) return { group: '', label: route.meta?.title || '' }
-  const group = MENU_GROUPS.find((g) => g.items.includes(hit))?.title || ''
+  const group = MENU_GROUPS.value.find((g) => g.items.includes(hit))?.title || ''
   const label = route.path === hit.paths[0] ? hit.label : (route.meta?.title || hit.label)
   return { group, label }
 })

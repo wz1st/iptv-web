@@ -1,11 +1,17 @@
 // 站点运行时配置。
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 export const siteName = ref('清和IPTV管理系统')
 export const version = ref('')
 
 /** 是否永久授权（用于侧栏是否显示 MyTV 项等） */
 export const isLic = ref(false)
+
+/** 授权等级。4 = 定制授权 —— 只有它能用「下载页编辑」与「定制APK」。 */
+export const licType = ref(0)
+
+/** 是否定制授权。后端 dao.License.Type == 4 是这个等级的判据。 */
+export const isCustom = computed(() => licType.value === 4)
 
 // 授权账号**是否处于登录态（后端 dao.Lic.Status == 1）。
 export const licLogged = ref(false)
@@ -35,6 +41,7 @@ export async function loadBoot() {
     if (b.site_name) siteName.value = String(b.site_name)
     if (b.version !== undefined && b.version !== null) version.value = String(b.version)
     isLic.value = Boolean(b.is_lic)
+    licType.value = Number(b.lic_type ?? 0) || 0
     licLogged.value = Boolean(b.lic_logged)
     needAuthor.value = Number(b.author ?? 0) || 0
     // installed 缺失时保持默认 true（见文件头「兜底策略」）

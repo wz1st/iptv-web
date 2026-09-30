@@ -26,6 +26,10 @@ export const API = {
   adminClientNoticeData: '/api/client/noticeData',
   adminClientData: '/api/client/data',
   adminClientMyTVData: '/api/clientMyTV/data',
+  // 定制APK（定制授权专属）：后端全在引擎里，api 只转发
+  adminClientCustomData: '/api/clientCustom/data',
+  // 下载页编辑（定制授权专属）：开关 + 站内文件树
+  adminDlStatus: '/api/dl/status',
   adminAdminsData: '/api/admins/data',
   adminUpdataData: '/api/updata/data',
   adminAboutData: '/api/about/data',
@@ -36,6 +40,7 @@ export const API = {
   adminEngineLog: '/api/engine/log',
   adminClientBuildStatus: '/api/client/buildStatus',
   adminClientMyTVBuildStatus: '/api/clientMyTV/buildStatus',
+  adminClientCustomBuildStatus: '/api/clientCustom/buildStatus',
   adminUpdataCheckWeb: '/api/updata/checkWeb',
   adminUpdataCheckFront: '/api/updata/checkFront',
   adminUpdataCheckEngine: '/api/updata/checkEngine',
@@ -51,6 +56,10 @@ export const API = {
   adminClientMyTVCheckBase: '/api/clientMyTV/checkBase',
   adminClientMyTVUpgradeBase: '/api/clientMyTV/upgradeBase',
   adminClientMyTVUploadBase: '/api/clientMyTV/uploadBaseApk',
+  // 定制编译基底上传（multipart）：**不做包名检查**，校验与记账在引擎里
+  adminClientCustomUploadBase: '/api/clientCustom/uploadBaseApk',
+  // 下载页编辑的文件上传（multipart，字段名 file；相对路径走表单字段 path）
+  adminDlUpload: '/api/dl/upload',
   adminChannelsUploadPayList: '/api/channels/uploadPayList',
   adminEpgsUploadLogo: '/api/epgs/uploadLogo',
 }
@@ -150,6 +159,8 @@ export const CLIENT_ROUTES = {
   // 发布：把待发布 apk 提升为线上版本（详见 service.PublishAPK）
   publish: '/api/client/publish',
   tipSet: '/api/client/tipSet',
+  // 广告内容：客户端退出弹窗里显示的那行字（仅定制授权可改，对应下发的 qqinfo）
+  adInfo: '/api/client/adInfo',
   // 公告：保存客户端启动时弹出的那条文案（原先在 /api/notice/save）
   noticeSave: '/api/client/noticeSave',
 }
@@ -178,6 +189,29 @@ export const MYTV_ROUTES = {
   // 上传编译基底 APK（multipart，字段名 apkfile）：包名须与镜像内底包一致，
   // 版本号从包里提取成基底版本（详见 service.UploadMytvBaseApk）
   uploadBaseApk: '/api/clientMyTV/uploadBaseApk',
+}
+
+/** 只有定制授权才显示的「定制APK」（/api/clientCustom）—— 与 mytv 同一套三段语义 */
+export const CUSTOM_ROUTES = {
+  // 编译：只产待发布包，线上包不动（校验与编译都在引擎里）
+  save: '/api/clientCustom/save',
+  // 发布：待发布包 rename 上位并落版本号
+  publish: '/api/clientCustom/publish',
+  // 上传定制编译基底 APK（multipart，字段名 apkfile）：**不检查包名**
+  uploadBaseApk: '/api/clientCustom/uploadBaseApk',
+}
+
+/** 只有定制授权才显示的「下载页编辑」（/api/dl）—— 后端全在引擎里 */
+export const DL_ROUTES = {
+  list: '/api/dl/list',
+  read: '/api/dl/read',
+  write: '/api/dl/write',
+  rename: '/api/dl/rename',
+  delete: '/api/dl/delete',
+  mkdir: '/api/dl/mkdir',
+  toggle: '/api/dl/toggle',
+  // 默认下载页四个按钮（骆驼 / MyTV / 定制 / 进后台）的显隐，整体覆盖写
+  buttons: '/api/dl/buttons',
 }
 
 /** 只有一个动作的资源：端点即动作（补上动作名后统一两段式） */

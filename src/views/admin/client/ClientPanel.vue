@@ -8,6 +8,7 @@ import { submitAction, submitUpload } from '@/utils/page'
 import { notify } from '@/utils/feedback'
 import { confirm } from '@/utils/confirm'
 import { isCoarsePointer } from '@/utils/touchTap'
+import { isCustom } from '@/utils/site'
 import { API, CLIENT_ROUTES as A } from '@/api/endpoints'
 import AppSwitch from '@/components/AppSwitch.vue'
 
@@ -39,6 +40,12 @@ const iconUrl = ref('')
 const bjList = ref([])          // [{ name, url }]
 /** 右侧预览用哪张背景（点缩略图切换；留空时取第一张） */
 const previewBjName = ref('')
+
+/* ---- 广告内容（定制授权专属）----
+  客户端退出弹窗里那行字，下发字段是登录响应的 qqinfo（后端 site.ad）。
+  非定制授权下后端会拒绝写入、下发也恒为作者博客，所以这里只在定制授权下露出。 */
+const adInfo = ref('')
+const savingAd = ref(false)
 
 /* ---- 应用默认设置 ---- */
 const decoder = ref(0)
@@ -106,6 +113,8 @@ async function load() {
     newApkName.value = g.newApkName || ''
     iconUrl.value = g.iconUrl || ''
     bjList.value = (g.bjUrl || []).map((n) => ({ name: n, url: `/images/${n}.png` }))
+    // 后端回的是"最终生效值"：没配过时给的是默认文案，照原样回填即可。
+    adInfo.value = g.adInfo || ''
     decoder.value = Number(g.app?.decoder ?? 0)
     buffTimeout.value = Number(g.app?.buffTimeout ?? 5)
     needAuthor.value = Number(g.app?.needAuthor ?? 0)
@@ -276,6 +285,20 @@ async function saveTips() {
     { reload: load }
   )
 }
+
+/* ---------------- 广告内容（定制授权专属）----------------
+  「编译配置」那一行里的一个普通字段，但它**不随编译提交** ——
+  只改一行客户端文案却要等一次 APK 打包说不过去，所以自己一个端点、即点即存。 */
+async function saveAdInfo() {
+  if (savingAd.value) return
+  savingAd.value = true
+  try {
+    // reload：后端会把空白裁掉，回填一次才能看到真正存下的值。
+    await submitAction(A.adInfo, { adInfo: adInfo.value }, { reload: load })
+  } finally {
+    savingAd.value = false
+  }
+}
 </script>
 
 <template>
@@ -309,7 +332,7 @@ async function saveTips() {
           <!-- 应用名 / 图标 / 背景同一行：这三件都是"客户端长什么样"，
                挤成上下两行只让表单更长，不增加信息 -->
           <div class="ui-inline" style="margin-top: 6px; align-items: flex-start">
-            <div class="ui-field" style="flex: 1; min-width: 150px">
+            <div class="ui-field" style="flex: 1; min-width: 120px">
               <label class="ui-field__label">应用名</label>
               <input v-model="form.appName" class="ui-input" type="text" placeholder="应用名" />
             </div>
@@ -326,7 +349,7 @@ async function saveTips() {
                 </div>
               </div>
             </div>
-            <div class="ui-field" style="flex: 2; min-width: 260px">
+            <div class="ui-field" style="flex: 2; min-width: 235px">
               <label class="ui-field__label">背景图片</label>
               <div class="ui-inline" style="gap: 6px">
                 <label class="ui-btn ui-btn--primary" style="margin: 0">
@@ -345,6 +368,36 @@ async function saveTips() {
                   <span class="thumb__del" title="删除" @click.stop="removeBj(b.name)">&times;</span>
                 </div>
               </div>
+            </div>
+            <!-- 广告内容（定制授权专属）：客户端退出弹窗里显示的那行字。
+                 单独一个端点即时保存 —— 它不参与编译，改一行文案不该等一次打包。
+                 .ui-inline 是 flex-wrap，换行判据看各项的**固有宽度**（= min-width）。
+                 这一行原有三项 min 合计 566px，1440 视口下行宽 772px ⇒ 第四项最多只能
+                 拿走约 205px。所以「应用名」的 min 由 150 收到 120、「背景图片」由 260
+                 收到 235，把空间让给这个要打字最长的字段（实测输入框 168px）。 -->
+            <div v-if="isCustom" class="ui-field" style="flex: 1 1 220px; min-width: 200px">
+              <label class="ui-field__label">广告内容</label>
+              <div class="ui-inline" style="gap: 6px">
+                <!-- .ui-input 是 width:100%，在 flex-wrap 容器里会被当成"固有宽度=整行"
+                     从而独占一行、把按钮顶到下一行；这里必须显式改成 flex:1 1 0。 -->
+                <input
+                  v-model="adInfo"
+                  class="ui-input"
+                  type="text"
+                  style="flex: 1 1 0; min-width: 0; width: auto"
+                  placeholder="作者博客: www.qingh.xyz"
+                  @keyup.enter="saveAdInfo"
+                />
+                <button
+                  class="ui-btn ui-btn--primary"
+                  type="button"
+                  :disabled="savingAd"
+                  @click="saveAdInfo"
+                >
+                  保存
+                </button>
+              </div>
+              <small class="ui-help">提示：留空即恢复默认（作者博客）。</small>
             </div>
           </div>
           <small class="ui-help">

@@ -5,8 +5,9 @@ import { useRoute, useRouter } from 'vue-router'
 import AdminTabs from '@/components/AdminTabs.vue'
 import ClientPanel from './client/ClientPanel.vue'
 import ClientMyTVPanel from './client/ClientMyTVPanel.vue'
+import ClientCustomPanel from './client/ClientCustomPanel.vue'
 import NoticePanel from './client/NoticePanel.vue'
-import { isLic } from '@/utils/site'
+import { isLic, isCustom } from '@/utils/site'
 
 const route = useRoute()
 const router = useRouter()
@@ -26,6 +27,16 @@ const TABS = computed(() => {
       label: 'MyTV客户端',
       path: '/admin/clientMyTV',
       hint: 'MyTV 版 APK 的版本与更新内容',
+    })
+  }
+  // 定制APK：只有定制授权（dao.License.Type == 4）才出现。
+  // 与 mytv 那个标签是刻意做减法：无出厂基底、无在线升级、上传不校验包名。
+  if (isCustom.value) {
+    list.push({
+      key: 'custom',
+      label: '定制APK',
+      path: '/admin/clientCustom',
+      hint: '定制版 APK 的版本与更新内容（连接地址与 MyTV 共用）',
     })
   }
   return list
@@ -62,7 +73,10 @@ function onChange(key) {
       </template>
       <!-- MyTV 标签：与骆驼同一套「编译 → 待发布 → 发布」流程，
            编译在引擎里执行，连接地址与 apk 均独立于骆驼。 -->
-      <ClientMyTVPanel v-else />
+      <ClientMyTVPanel v-else-if="active === 'mytv'" />
+      <!-- 定制APK 标签：同为「编译 → 待发布 → 发布」，编译也在引擎里，
+           但取消出厂基底 / 在线升级 / 包名检查，连接地址与 mytv 共用。 -->
+      <ClientCustomPanel v-else />
     </div>
   </div>
 </template>

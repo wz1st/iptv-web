@@ -1,6 +1,6 @@
 <script setup>
 // 官网下载页（PC）—— 重构自 index.html。
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { siteName } from '@/utils/site'
 
 const dto = ref({
@@ -10,7 +10,18 @@ const dto = ref({
   show_down_mytv: false,
   mytv_url: '',
   mytv_name: '',
+  show_down_custom: false,
+  custom_url: '',
+  custom_name: '',
+  // 进后台的按钮：拉不到接口时保持可见（改造前它是无条件显示的）——
+  // 配置里显式关掉时，接口会把这个值带成 false。
+  show_admin: true,
 })
+
+/** 三个下载按钮一个都显示不出来时给一句提示，别让用户对着空区域发呆。 */
+const noDownload = computed(
+  () => !dto.value.show_down && !dto.value.show_down_mytv && !dto.value.show_down_custom
+)
 
 onMounted(async () => {
   try {
@@ -72,10 +83,18 @@ const img = {
               >
                 {{ dto.mytv_name }}（MyTV）
               </a>
-              <a class="dl dl--ghost" href="/admin">{{ siteName }}</a>
+              <a
+                v-if="dto.show_down_custom"
+                class="dl dl--custom"
+                :href="dto.custom_url"
+                :download="dto.custom_name"
+              >
+                {{ dto.custom_name }}（定制）
+              </a>
+              <a v-if="dto.show_admin" class="dl dl--ghost" href="/admin">{{ siteName }}</a>
             </div>
 
-            <p v-if="!dto.show_down && !dto.show_down_mytv" class="hero__hint">
+            <p v-if="noDownload" class="hero__hint">
               客户端正在编译中，请稍后刷新本页…
             </p>
           </div>
@@ -162,6 +181,7 @@ const img = {
 .dl:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(37, 99, 235, .22); text-decoration: none; }
 .dl--primary { background: #2563eb; color: #fff; }
 .dl--secondary { background: #0891b2; color: #fff; }
+.dl--custom { background: #7c3aed; color: #fff; }
 .dl--ghost { background: #fff; color: #2563eb; border: 1px solid #bfdbfe; }
 
 .hero__hint { font-size: 13px; color: #9ca3af; margin-top: 12px; }

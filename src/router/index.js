@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { installed } from '@/utils/site'
+import { installed, isCustom } from '@/utils/site'
 
 // 前端路由表 —— 与后端 router/apiRouter.go 的接口表互不重叠：
 
@@ -70,8 +70,14 @@ const routes = [
       // 公告已并入第一个标签（同一屏、上下堆叠），不再是独立标签。
       { path: 'client', name: 'admin-client', component: ClientSettings, meta: { title: '客户端设置' } },
       { path: 'clientMyTV', name: 'admin-client-mytv', component: ClientSettings, meta: { title: 'MyTV客户端设置' } },
+      // 定制APK（License.Type == 4）：标签条里 path 必须在这里有对应路由，
+      // 否则点标签会落进未知路径兜底 → 被 redirect 到前台首页（看着像"跳去下载页"）。
+      { path: 'clientCustom', name: 'admin-client-custom', component: ClientSettings, meta: { title: '定制APK设置' } },
       // 管理员设置：公告搬去客户端设置后，这里只剩一个面板，不再需要标签页
       { path: 'admins', name: 'admin-admins', component: AdminsPanel, meta: { title: '管理员设置' } },
+      // 下载页编辑：只有定制授权（License.Type == 4）才用得上。页面自身也会再判一次，
+      // 这里不挂守卫 —— 菜单项已经按 isCustom 隐藏，直接敲 URL 进来会被页面挡回去。
+      { path: 'dlEdit', name: 'admin-dl-edit', component: () => import('@/views/admin/system/DlEditView.vue'), meta: { title: '下载页编辑' } },
       // 进阶功能：授权引擎。改造前路径是 /admin/license，接口与二进制已改名 engine
       { path: 'engine', name: 'admin-engine', component: () => import('@/views/admin/EngineView.vue'), meta: { title: '进阶功能' } },
       { path: 'updata', name: 'admin-updata', component: () => import('@/views/admin/UpdataView.vue'), meta: { title: '在线升级' } },
@@ -101,6 +107,10 @@ router.beforeEach((to) => {
   }
 
   if (isWizard) return '/'
+
+  // 定制分支隐藏「在线升级」：菜单不画，直接敲 URL 也一样进不去。
+  // 定制包不走主线的发布位，这条链路留着只会让人误点。
+  if (isCustom.value && path === '/admin/updata') return '/admin/index'
 
   return true
 })

@@ -10,6 +10,11 @@ const dto = ref({
   show_down_mytv: false,
   mytv_url: '',
   mytv_name: '',
+  show_down_custom: false,
+  custom_url: '',
+  custom_name: '',
+  // 进后台的按钮：拉不到接口时保持可见（改造前它无条件显示），配置显式关掉才消失。
+  show_admin: true,
 })
 
 onMounted(async () => {
@@ -38,7 +43,10 @@ const img = {
         <a v-if="dto.show_down_mytv" class="m__btn m__btn--secondary" :href="dto.mytv_url" :download="dto.mytv_name">
           {{ dto.mytv_name }}（MyTV）
         </a>
-        <a class="m__btn m__btn--ghost" href="/admin">{{ siteName }}</a>
+        <a v-if="dto.show_down_custom" class="m__btn m__btn--custom" :href="dto.custom_url" :download="dto.custom_name">
+          {{ dto.custom_name }}（定制）
+        </a>
+        <a v-if="dto.show_admin" class="m__btn m__btn--ghost" href="/admin">{{ siteName }}</a>
       </div>
     </section>
 
@@ -62,6 +70,7 @@ const img = {
 }
 .m__btn--primary { background: #2563eb; color: #fff; }
 .m__btn--secondary { background: #0891b2; color: #fff; }
+.m__btn--custom { background: #7c3aed; color: #fff; }
 .m__btn--ghost { background: #fff; color: #2563eb; border: 1px solid #bfdbfe; }
 .m__pic img { width: 100%; display: block; }
 </style>

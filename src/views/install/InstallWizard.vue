@@ -27,7 +27,7 @@ const year = new Date().getFullYear()
 const router = useRouter()
 
 /** 初始化安装的默认账号 —— 用户名与密码都是 test */
-const DEFAULT_ACCOUNT = 'test'
+const DEFAULT_ACCOUNT = ''
 
 const form = ref({
   apkapi: '',
