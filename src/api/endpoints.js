@@ -51,6 +51,10 @@ export const API = {
   adminClientMyTVCheckBase: '/api/clientMyTV/checkBase',
   adminClientMyTVUpgradeBase: '/api/clientMyTV/upgradeBase',
   adminClientMyTVUploadBase: '/api/clientMyTV/uploadBaseApk',
+  // 客户端基底的同构三件套，但序列是 client-vX.Y.Z，且编译全在 api 侧（不经引擎）
+  adminClientCheckBase: '/api/client/checkBase',
+  adminClientUpgradeBase: '/api/client/upgradeBase',
+  adminClientUploadBase: '/api/client/uploadBaseApk',
   adminChannelsUploadPayList: '/api/channels/uploadPayList',
   adminEpgsUploadLogo: '/api/epgs/uploadLogo',
 }
@@ -150,6 +154,9 @@ export const CLIENT_ROUTES = {
   // 发布：把待发布 apk 提升为线上版本（详见 service.PublishAPK）
   publish: '/api/client/publish',
   tipSet: '/api/client/tipSet',
+  // 编译基底（底包）：查远端 client-vX.Y.Z / 在线升级（上传走 multipart，在 API 里）
+  checkBase: '/api/client/checkBase',
+  upgradeBase: '/api/client/upgradeBase',
   // 公告：保存客户端启动时弹出的那条文案（原先在 /api/notice/save）
   noticeSave: '/api/client/noticeSave',
 }

@@ -35,6 +35,13 @@ const newExists = ref(false)
 const newApkUrl = ref('')
 const newApkName = ref('')
 
+/* ---- 编译基底（底包）---- */
+// baseVersion 是基底版本（1.0.0），basePkg 是镜像内基包的包名（xyz.qingh.qhtv）。
+// 只有这两个字段来自服务端；上传/在线升级都是动作，不产生持久状态。
+const baseVersion = ref('')
+const basePkg = ref('')
+const baseInput = ref(null)
+
 const iconUrl = ref('')
 const bjList = ref([])          // [{ name, url }]
 /** 右侧预览用哪张背景（点缩略图切换；留空时取第一张） */
@@ -117,6 +124,15 @@ async function load() {
     }
     building.value = Number(g.status ?? 0) === 1
     if (building.value) startPolling()
+
+    // 基底信息（版本/包名）只在 buildStatus 的 data 里，client/data 不带。
+    // 单独取一次是为了让首屏就能看到当前基底，而不是等用户点编译才出现。
+    if (!building.value) {
+      try {
+        const st = await post(API.adminClientBuildStatus)
+        applyBuildStatus(st?.data)
+      } catch { /* 顶栏已有错误提示，这里不重复弹 */ }
+    }
   } catch { /* http.js 已处理 */ } finally {
     loading.value = false
   }
@@ -177,6 +193,41 @@ async function removeBj(name) {
     bjList.value = bjList.value.filter((b) => b.name !== name)
     if (previewBjName.value === name) previewBjName.value = ''
   }
+}
+
+/* ---------------- 编译基底（底包）：上传替换 / 在线检查升级 ---------------- */
+/**
+ * 上传基包。只接受服务端指定的包名（xyz.qingh.qhtv）——
+ * 包名进了登录密钥派生公式，换包名的包装上去登录时不会报错，
+ * 只会解出一堆乱码，那道门必须在服务端守住。
+ */
+async function onBasePick(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  await submitUpload(API.adminClientUploadBase, file, 'apkfile', { reload: load })
+  if (baseInput.value) baseInput.value.value = ''
+}
+
+/** 在线查 + 升级合成一个入口：先查，有新版才问要不要升。 */
+async function checkAndUpgradeBase() {
+  const res = await submitAction(A.checkBase, {})
+  if (res?.code !== 1) return
+  const c = res.data || {}
+  if (!c.remote) {
+    notify(`远端还没有基底发布（本地 ${c.local || '-'}）`, 'warning', 3000)
+    return
+  }
+  if (!c.hasUpdate) {
+    notify(res.msg || `当前已是最新基底版本 ${c.local}`, 'success', 3000)
+    return
+  }
+  const ok = await confirm(
+    res.msg || `确定把编译基底从 ${c.local || '当前版本'} 升级到 ${c.remote} 吗？` +
+      '升级后当前待发布包会作废，需要重新编译并发布。',
+    { okText: '在线升级', okVariant: 'danger' }
+  )
+  if (!ok) return
+  await submitAction(A.upgradeBase, {}, { reload: load })
 }
 
 /* ---------------- 编译：只产出「待发布」包，线上一个字节都不动 ---------------- */
@@ -246,6 +297,9 @@ function applyBuildStatus(d) {
   // 名字要和 newUrl 一起刷：下载链接的 :download 取的就是它。
   if (d.name) apkName.value = d.name
   if (d.newName) newApkName.value = d.newName
+  // 基底信息同源：换基底后这两个值会变，轮询时一并刷回来。
+  if (d.baseVersion !== undefined) baseVersion.value = d.baseVersion || ''
+  if (d.basePkg !== undefined) basePkg.value = d.basePkg || ''
 }
 function stopPolling() {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
@@ -349,7 +403,39 @@ async function saveTips() {
           </div>
           <small class="ui-help">
             提示：图片仅支持PNG格式，不超过800KB；多张背景图在客户端随机显示，点缩略图可切换右侧预览。
+            上传的图标与背景会在**编译时**打进安装包；没上传就用基包自带的默认图。
           </small>
+
+          <!-- ============ 编译基底（底包）============ -->
+          <!--
+            基包 = 编译的起点。编译时服务端会解包它、改掉服务端链接 / 应用名 / 版本号，
+            再重新编译签名（见 iptv-api/until/clientBuild.go，全在 api 侧完成）。
+            logo 与启动背景也在这一步替换进包。
+          -->
+          <div class="ui-field">
+            <label class="ui-field__label">编译基底 APK</label>
+            <div class="ui-kv">
+              基底版本
+              <span class="ui-badge ui-badge--info">{{ baseVersion || '-' }}</span>
+            </div>
+            <div class="ui-kv">
+              基包包名
+              <span class="ui-badge ui-badge--muted">{{ basePkg || '-' }}</span>
+            </div>
+            <div class="ui-btns">
+              <label class="ui-btn ui-btn--primary">
+                上传基包
+                <input ref="baseInput" type="file" accept=".apk,application/vnd.android.package-archive"
+                  style="display: none" @change="onBasePick" />
+              </label>
+              <button class="ui-btn" type="button" @click="checkAndUpgradeBase">在线升级基底</button>
+            </div>
+            <small class="ui-help">
+              提示：只接受包名 <code>{{ basePkg || 'xyz.qingh.qhtv' }}</code> 的基包 ——
+              包名参与登录密钥派生，换了包的客户端登录时会解出乱码。
+              换基底后必须重新编译并发布。
+            </small>
+          </div>
 
           <!-- ============ 版本：待发布 / 当前 ============ -->
           <!-- 一张卡片负责"出一版新的"，一张负责"现在线上是什么"。 -->
