@@ -1,1 +1,4 @@
 node_modules/
+# 构建产物：靠 push_webdist.py / sftp 上机，不入库。
+# 不加这条时 `git status` 永远挂着 ?? dist/，容易误当源码改动。
+dist/
