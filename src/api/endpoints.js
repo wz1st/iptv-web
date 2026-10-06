@@ -44,6 +44,10 @@ export const API = {
   // ---- 文件上传（multipart/form-data，不参与 JSON 化）----
   adminClientUploadIcon: '/api/client/uploadIcon',
   adminClientUploadBj: '/api/client/uploadBj',
+  // 客户端编译基底：上传走 multipart，在线检查/升级走远端 client-vX.Y.Z 序列
+  adminClientUploadBase: '/api/client/uploadBaseApk',
+  adminClientCheckBase: '/api/client/checkBase',
+  adminClientUpgradeBase: '/api/client/upgradeBase',
   // 在线检查/升级编译基底（远端 mytv-vX.Y.Z 序列，走 until/ghnet.go 的直连+国内加速）
   adminClientMyTVCheckBase: '/api/clientMyTV/checkBase',
   adminClientMyTVUpgradeBase: '/api/clientMyTV/upgradeBase',
@@ -151,6 +155,9 @@ export const CLIENT_ROUTES = {
   // 发布：把待发布 apk 提升为线上版本（详见 service.PublishAPK）
   publish: '/api/client/publish',
   tipSet: '/api/client/tipSet',
+  // 编译基底（底包）：查远端 client-vX.Y.Z / 在线升级（上传走 multipart，在 API 里）
+  checkBase: '/api/client/checkBase',
+  upgradeBase: '/api/client/upgradeBase',
   // 广告内容：客户端退出弹窗里显示的那行字（仅定制授权可改，对应下发的 qqinfo）
   adInfo: '/api/client/adInfo',
   // 公告：保存客户端启动时弹出的那条文案（原先在 /api/notice/save）
