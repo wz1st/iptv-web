@@ -93,9 +93,27 @@ function pad3(n) {
 }
 /** 编译号 +1，封顶 999（再往上 manifest 那段就放不下了）。 */
 function nextBuildNo(v) {
+  const cur = lastBuildNo(v)
+  if (!cur) return pad3(1)
+  return pad3(Math.min(Number(cur) + 1, 999))
+}
+
+/**
+ * 从任意形状的串里取**结尾那一段连续数字**并补成三位 —— 服务端
+ * `until.PadBuildNo` 的前端对偶。
+ *
+ * 两条规则缺一不可：
+ *   - 取**最后一段**而不是"长度 ≥3 就原样返回"：`"1.0"`（长度正好 3）不是编译号，
+ *     按长度判会把它放过去，mytv 那条链路就是这么拼出 5 段版本的。
+ *   - 取**连续数字**而不是 `split('.')` 后取末段：`"1.0.0.001"` 的末段是 `001`，
+ *     但 `"abc12"` 这类脏值要能退化成 `012` 而不是崩掉。
+ *
+ * 前后端各写一份归一是隐患，所以判据里有一条钉死：同一组输入两边必须产出相同的串。
+ */
+function lastBuildNo(v) {
   const m = String(v ?? '').match(/(\d+)$/)
-  const n = m ? Number(m[1]) + 1 : 1
-  return pad3(Math.min(n, 999))
+  if (!m) return ''
+  return pad3(Math.min(Number(m[1]), 999))
 }
 
 /** 线上版本的**编译号**（末段）；线上版本号不带基底前缀时按"还没编过"处理。 */
@@ -362,7 +380,11 @@ function applyBuildStatus(d) {
   if (d.version !== undefined) currentVersion.value = d.version || ''
   if (d.size !== undefined) curSize.value = d.size || ''
   if (d.md5 !== undefined) curMd5.value = d.md5 || ''
-  if (d.newVersion) form.value.version = d.newVersion
+  // 服务端的 newVersion 是**完整版本号**（基底.编译号），而 form.version 的契约
+  // 是**纯编译号**（见文件头）。直接赋值会让徽章拼成
+  // `基底` + `基底.编译号` = 7 段的 1.1.0.1.1.0.001，且每点一次轮询再叠一层。
+  // 过一道 lastBuildNo 取末段，与服务端 PadBuildNo 的归一规则保持一致。
+  if (d.newVersion) form.value.version = lastBuildNo(d.newVersion)
   if (d.newSize !== undefined) newSize.value = d.newSize || ''
   if (d.newMd5 !== undefined) newMd5.value = d.newMd5 || ''
   if (d.newExists !== undefined) newExists.value = Boolean(d.newExists)
