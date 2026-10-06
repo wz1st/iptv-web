@@ -73,12 +73,22 @@ function nextBuildNo(v) {
   const n = m ? Number(m[1]) + 1 : 1
   return pad3(Math.min(n, 999))
 }
+/** 线上版本的**编译号**（末段）；线上版本号不带基底前缀时按"还没编过"处理。 */
+function currentBuildNo() {
+  const base = String(baseVersion.value || '')
+  const cur = String(currentVersion.value || '')
+  // 线上版本号必须是 `基底.编译号` 才认它的末段。换基底后旧版本号
+  // （1.0.0.005 vs 新基底 2.0.0）不匹配 ⇒ 返回空串，编译号由
+  // nextBuildNo('') 落到 001 —— 新基底的第一版就该是 2.0.0.001。
+  if (!base || !cur.startsWith(base + '.')) return ''
+  return (cur.match(/(\d+)$/) || ['', ''])[1]
+}
 // nextVersionFull 是给徽章看的完整版本串（1.2.2.012 → 1.2.2.013）。
 // 还没发布过任何版本时（线上包不存在）用基底版本兜底，显示 1.2.2.001。
 const nextVersionFull = computed(() => {
   const base = String(baseVersion.value || '')
   if (!base) return ''
-  return `${base}.${nextBuildNo(currentVersion.value)}`
+  return `${base}.${nextBuildNo(currentBuildNo())}`
 })
 
 async function load() {
@@ -197,7 +207,10 @@ async function upgradeBase(c) {
 async function buildApk() {
   if (!serverUrl.value) { notify('APK连接地址不能为空', 'warning'); return }
   // 编译号自动 +1；封顶 999 时会与已发布版本相同，由后端「版本号不能相同」兜底拒绝。
-  const appVersion = nextBuildNo(currentVersion.value)
+  // ★ 必须走 currentBuildNo()，不能直接对 currentVersion 取末段：
+  // currentVersion 是**完整版本号**（1.2.2.012），换基底后它仍是旧基底的号，
+  // 对它取末段会从旧基底继续递增。后端只接受纯数字编译号，传完整串会被拒。
+  const appVersion = nextBuildNo(currentBuildNo())
   const res = await submitAction(MYTV_ROUTES.clientMyTV, {
     serverUrl: serverUrl.value,
     appVersion,
