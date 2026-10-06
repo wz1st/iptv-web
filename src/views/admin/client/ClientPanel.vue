@@ -69,14 +69,61 @@ const hasCurrent = computed(() => Boolean(curSize.value) && curSize.value !== '0
 // 下载下来是个半截包，md5 也还在变。所以"存在"之外还要 `!building`。
 const canUseNew = computed(() => newExists.value && !building.value)
 
-// 新版本号 = 当前版本末段数字 +1。
-// "末段"取的是结尾那一串数字：1.0 → 1.1、1.9 → 1.10、1.0.0 → 1.0.1。
-// 不能图省事写成"最后一个字符 +1" —— 那样 1.9 会算出 1:0 之类的怪串，……
-function nextVersion(v) {
-  const s = String(v ?? '').trim()
-  const m = s.match(/(\d+)(\D*)$/)
-  if (!m) return s ? `${s}.1` : '1.0'
-  return s.slice(0, m.index) + String(Number(m[1]) + 1) + m[2]
+// 新版本的编译号 = 当前版本**末段**数字 +1，与 mytv 面板同一条规则。
+//
+// ★ 这里过去写的是「对完整版本号做末位 +1」（nextVersion），是错的：
+// 服务端 until.FormatClientVersion(base, buildNo) 把传入值当**纯编译号**，
+// 再拼一次基底版本（1.0.0 + "." + buildNo）。前端若传完整串 `1.0.0.001`，
+// 编译出来就是 `1.0.0.1.0.0.001` —— 每点一次编译多叠一层，
+// 线上出现过 8 段的 `1.0.0.1.0.0.1.1`。
+//
+// **必须补足三位**：底包 versionName 末段就是三位，编译时是二进制 manifest
+// 里的定长字节替换，新旧串不等长就把 manifest 写坏；客户端还按字符串比版本，
+// 不补零时 1.0.0.9 会被判成比 1.0.0.12 新。
+function pad3(n) {
+  return String(n).padStart(3, '0')
+}
+function nextBuildNo(v) {
+  const m = String(v ?? '').match(/(\d+)$/)
+  const n = m ? Number(m[1]) + 1 : 1
+  return pad3(Math.min(n, 999))
+}
+/** 线上版本的**编译号**（末段）；线上版本号不带基底前缀时按"还没编过"处理。 */
+function currentBuildNo() {
+  const base = String(baseVersion.value || '')
+  const cur = String(currentVersion.value || '')
+  // 线上版本号必须是 `基底.编译号` 才认它的末段。
+  // 换基底后旧版本号（1.0.0.005 vs 新基底 2.0.0）不匹配 ⇒ 返回空串，
+  // 编译号由 nextBuildNo('') 落到 001 —— 新基底的第一版就该是 2.0.0.001。
+  if (!base || !cur.startsWith(base + '.')) return ''
+  return (cur.match(/(\d+)$/) || ['', ''])[1]
+}
+// 给「新版本」卡片徽章看的完整版本串（1.0.0.001 → 1.0.0.002）。
+// 线上包还没产出过（拿不到完整版本号）时，用基底版本 + 001 兜底。
+const nextVersionFull = computed(() => {
+  const base = String(baseVersion.value || '')
+  if (!base) return ''
+  return `${base}.${nextBuildNo(currentBuildNo())}`
+})
+
+// 徽章上显示的完整版本串。form.version 存的是**纯编译号**（服务端契约），
+// 徽章要给人看的是「基底.编译号」—— 混起来就成了截图里那种 8 段串。
+// 无论哪条路径，**发出去的都是纯编译号**，完整串只在这一处拼。
+const newVersionBadge = computed(() => {
+  const base = String(baseVersion.value || '')
+  const no = String(form.value.version || '').trim()
+  if (!no) return nextVersionFull.value || '-'
+  if (!base) return no
+  return `${base}.${no}`
+})
+
+// 编译号补算。baseVersion 只在 buildStatus 的 data 里（client/data 不带），
+// 首屏进 load() 时还没有 ⇒ 必须在 baseVersion 赋值**之后**再调一次。
+// 注意必须走 currentBuildNo()，不能直接对 currentVersion 取末段 ——
+// 那样换基底后会从旧基底的号继续递增，重新引入叠加 bug。
+function ensureBuildNo() {
+  if (String(form.value.version || '').trim()) return
+  form.value.version = nextBuildNo(currentBuildNo())
 }
 
 /* ---- 右侧模拟电视：背景取"用户点选的那张"，没有就取第一张 ---- */
@@ -99,8 +146,10 @@ async function load() {
     currentVersion.value = g.build?.version || ''
     form.value = {
       appName: g.build?.name || '',
-      // 已有待发布的包就沿用它的版本号，否则默认「当前版本末位 +1」
-      version: g.newVersion || nextVersion(g.build?.version),
+      // 已有待发布的包就沿用它（服务端存的就是纯编译号）；
+      // 否则先留空，等基底版本拿到后由 ensureBuildNo() 按「当前版本末位 +1」补算。
+      // 这里绝不能直接算 —— 此刻 baseVersion 还没拉下来。
+      version: g.newVersion || '',
     }
     curSize.value = g.upSize || ''
     curMd5.value = g.apkMd5 || ''
@@ -133,6 +182,7 @@ async function load() {
         applyBuildStatus(st?.data)
       } catch { /* 顶栏已有错误提示，这里不重复弹 */ }
     }
+    ensureBuildNo()
   } catch { /* http.js 已处理 */ } finally {
     loading.value = false
   }
@@ -234,7 +284,10 @@ async function checkAndUpgradeBase() {
 async function buildApk() {
   if (!form.value.appName) { notify('应用名不能为空', 'warning'); return }
   if (!form.value.version) { notify('新版本号不能为空', 'warning'); return }
-  if (String(form.value.version) === String(currentVersion.value)) {
+  // 比编译号，不是比完整串 —— form.version 存的是纯编译号（002），
+  // currentVersion 是完整版本号（1.0.0.002），拿它们直接比永不相等，
+  // 校验会形同虚设。
+  if (form.value.version === currentBuildNo()) {
     notify('新版本号不能与当前版本相同', 'warning'); return
   }
   const res = await submitAction(A.appInfo, {
@@ -255,7 +308,7 @@ async function buildApk() {
 async function publishApk() {
   if (!canUseNew.value) { notify('请先编译新版本', 'warning'); return }
   const ok = await confirm(
-    `确定把 ${form.value.version} 发布上线吗？发布后当前版本与所有下载链接都会换成这个包。`,
+    `确定把 ${newVersionBadge.value} 发布上线吗？发布后当前版本与所有下载链接都会换成这个包。`,
     { okText: '发布', okVariant: 'danger' }
   )
   if (!ok) return
@@ -298,8 +351,10 @@ function applyBuildStatus(d) {
   if (d.name) apkName.value = d.name
   if (d.newName) newApkName.value = d.newName
   // 基底信息同源：换基底后这两个值会变，轮询时一并刷回来。
+  // 顺序要紧：baseVersion 刷完后才能推算编译号，所以补算放在这两个 if 之后。
   if (d.baseVersion !== undefined) baseVersion.value = d.baseVersion || ''
   if (d.basePkg !== undefined) basePkg.value = d.basePkg || ''
+  ensureBuildNo()
 }
 function stopPolling() {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
@@ -446,7 +501,7 @@ async function saveTips() {
               <div class="ver-card__body">
                 <div class="ui-kv">
                   版本号
-                  <span class="ui-badge ui-badge--info">{{ form.version || '-' }}</span>
+                  <span class="ui-badge ui-badge--info">{{ newVersionBadge }}</span>
                 </div>
                 <div class="ui-kv">
                   大小
@@ -496,7 +551,8 @@ async function saveTips() {
           </div>
           <small class="ui-help">
             提示：「编译」只产出待发布安装包，线上文件与版本号不动；点「发布」才把新包替换上去，
-            下载页与客户端自升级同时切到新版本。
+            下载页与客户端自升级同时切到新版本。版本号自动取「基底版本 + 末位 +1」，
+            形如 1.0.0.002（编译号恒三位）；换基底后编译号从 001 重新起。
           </small>
         </div>
 
