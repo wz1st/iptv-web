@@ -500,7 +500,10 @@ async function saveTips() {
               基包包名
               <span class="ui-badge ui-badge--muted">{{ basePkg || '-' }}</span>
             </div>
-            <div class="ui-btns">
+            <!-- 两个按钮并排：类名 ui-btns 一直没有对应样式（全仓只此一处引用），
+                 结果是两者之间只剩一个空格的宽度、视觉上粘在一起。改用现成的
+                 ui-inline（flex + gap:10px），与页里其它按钮行同一口径。 -->
+            <div class="ui-inline">
               <label class="ui-btn ui-btn--primary">
                 上传基包
                 <input ref="baseInput" type="file" accept=".apk,application/vnd.android.package-archive"
@@ -764,9 +767,12 @@ async function saveTips() {
   aspect-ratio: 16 / 9;
   border-radius: 6px;
   overflow: hidden;
-  /* 没设背景图时的默认底色 —— 与 APK 里"未配置背景"时的呈现一致；
-     上传后由内联 background-image 盖住这层纯色。 */
-  background-color: #449fe9;
+  /* 没上传背景图时显示**星野图** —— 与 APK 里"未配置背景"时的默认启动背景是同一张
+     （字节相同：iptv-apk-rebuilt/tv/src/main/res/drawable/qh_bg.png，sha256 3ad0ce51…）。
+     上传后由内联 background-image 盖住它。
+     底色只在这张图还没解码出来时闪一下，取的是原图天空区的主色调。 */
+  background-color: #02136a;
+  background-image: url('/static/images/qh_bg.png');
   background-size: cover;
   background-position: center;
 }
