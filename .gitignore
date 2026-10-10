@@ -1,4 +1,9 @@
 node_modules/
 # 构建产物：靠 push_webdist.py / sftp 上机，不入库。
 # 不加这条时 `git status` 永远挂着 ?? dist/，容易误当源码改动。
+#
+# 用 `dist*` 而不是只写 `dist/`：按版本留档时产物目录会叫 dist_v424/ 这种，
+# 只写 `dist/` 的话每次版本构建都在 status 里挂一大片未跟踪文件，
+# 真正该看的源码改动反而被淹掉。
 dist/
+dist*
