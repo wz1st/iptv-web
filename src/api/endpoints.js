@@ -30,6 +30,8 @@ export const API = {
   adminUpdataData: '/api/updata/data',
   adminAboutData: '/api/about/data',
   adminEngineData: '/api/engine/data',
+  // SSL 证书（系统菜单）：证书信息、开关、nginx 版本、文件路径
+  adminSslData: '/api/ssl/data',
 
   // ---- 只读探测 / 轮询（同样是 POST，只是没有参数）----
   adminEngineCheckProxy: '/api/engine/checkProxy',
@@ -185,6 +187,14 @@ export const MYTV_ROUTES = {
   // 上传编译基底 APK（multipart，字段名 apkfile）：包名须与镜像内底包一致，
   // 版本号从包里提取成基底版本（详见 service.UploadMytvBaseApk）
   uploadBaseApk: '/api/clientMyTV/uploadBaseApk',
+}
+
+/** SSL 证书（/api/ssl）—— 证书落在 /config/cert，开关落在 config.yml 的 ssl 段 */
+export const SSL_ROUTES = {
+  // 保存：证书/私钥（留空表示保持不变）+ 开关，然后渲染 nginx 片段并 reload
+  save: '/api/ssl/save',
+  // 清除：删掉证书与私钥，并把两个开关一起关掉
+  clear: '/api/ssl/clear',
 }
 
 /** 只有一个动作的资源：端点即动作（补上动作名后统一两段式） */

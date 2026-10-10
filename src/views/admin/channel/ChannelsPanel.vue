@@ -353,8 +353,12 @@ const savingChs = ref(false)
 
 // 编辑框正文 ← 当前快照（打开弹窗、切换源/中转视图时各来一次）。
 function syncEditor() {
+  // 中转视图用 `purl || url` 而不是只取 purl：聚合分组里"来源分组没开中转、
+  // 也没配自定义 UA"的频道**不生成中转地址**（引擎 aggregateNeedsProxy），
+  // 这批频道的实际下发/订阅地址就是源地址 —— 只挑 purl 会让它们整行消失，
+  // 看起来像"聚合分组丢了几个台"。
   editText.value = viewProxy.value
-    ? viewChs.value.filter((c) => c.purl).map((c) => `${c.name},${c.purl}`).join('\n')
+    ? viewChs.value.map((c) => `${c.name},${c.purl || c.url}`).join('\n')
     : viewChs.value.map((c) => `${c.name},${c.url}`).join('\n')
 }
 
@@ -372,7 +376,12 @@ const lineTips = computed(() => {
   const map = new Map()
   for (const c of viewChs.value) {
     if (!c.caName) continue
-    const via = c.proxy ? '该分组已开启中转，此处为中转后地址' : '该分组未开启中转，此处为源地址'
+    // 三种情况分开说，否则"没开中转却还在中转"看起来像 bug：
+    // 来源分组配了 UA 时，链接必须经中转取流（UA 由中转带上）。
+    let via
+    if (c.proxy) via = '该分组已开启中转，此处为中转后地址'
+    else if (c.ua) via = '该分组未开中转，但配了自定义 UA —— 仍走中转（UA 由中转带上）'
+    else via = '该分组未开中转且未配 UA，此处为源地址'
     const tip = `来源分组：${c.caName}（${via}）`
     map.set(`${c.name},${c.url}`, tip)
     if (c.purl) map.set(`${c.name},${c.purl}`, tip)
@@ -1116,7 +1125,7 @@ const TYPE_LABEL = {
             <span class="ui-hint">
               {{ txtAuto
                 ? (viewProxy
-                  ? '本聚合分组的中转入口，只读；播放器实际取流走的就是它'
+                  ? '本聚合分组的中转入口，只读；来源分组没开中转且没配自定义 UA 的频道显示源地址'
                   : '聚合分组的频道由规则生成，不可编辑；地址按所属分组是否开启中转显示')
                 : (viewProxy
                   ? '中转地址为只读，仅供查看与复制'
@@ -1231,7 +1240,11 @@ const TYPE_LABEL = {
                 <td
                   class="u-text-sm ch-url-col"
                   style="word-break: break-all"
-                  :title="ch.caName ? `来源分组：${ch.caName}${ch.proxy ? '（已开启中转）' : ''}` : ''"
+                  :title="ch.caName
+                    ? `来源分组：${ch.caName}` + (ch.proxy
+                      ? '（已开启中转）'
+                      : (ch.ua ? '（未开中转，配了自定义 UA —— 仍走中转）' : '（未开中转，直连源站）'))
+                    : ''"
                 >{{ ch.url }}</td>
                 <td class="u-center" @dblclick.stop>
                   <Switch

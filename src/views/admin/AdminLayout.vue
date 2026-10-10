@@ -62,6 +62,8 @@ const MENU_GROUPS = [
     items: [
       // 系统公告已并入「客户端设置」，这里只剩管理员设置
       { key: 'admins', label: '管理员设置', icon: 'user', paths: ['/admin/admins'] },
+      // HTTPS：上传/粘贴证书、开关 443 与 80 强制跳转、查看证书信息
+      { key: 'ssl', label: 'SSL 证书', icon: 'shield', paths: ['/admin/ssl'] },
       { key: 'updata', label: '在线升级', icon: 'refresh', paths: ['/admin/updata'] },
     ],
   },
