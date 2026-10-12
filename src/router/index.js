@@ -11,6 +11,7 @@ const DeviceManage = () => import('@/views/admin/DeviceManageView.vue')
 const ChannelManage = () => import('@/views/admin/ChannelManageView.vue')
 const ClientSettings = () => import('@/views/admin/ClientSettingsView.vue')
 const AdminsPanel = () => import('@/views/admin/system/AdminsPanel.vue')
+const SslPanel = () => import('@/views/admin/system/SslPanel.vue')
 
 const routes = [
   // ---- 前台（未安装时由守卫改道到 /install）----
@@ -78,6 +79,8 @@ const routes = [
       // 下载页编辑：只有定制授权（License.Type == 4）才用得上。页面自身也会再判一次，
       // 这里不挂守卫 —— 菜单项已经按 isCustom 隐藏，直接敲 URL 进来会被页面挡回去。
       { path: 'dlEdit', name: 'admin-dl-edit', component: () => import('@/views/admin/system/DlEditView.vue'), meta: { title: '下载页编辑' } },
+      // SSL 证书：证书/私钥落在 /config/cert，开关与端口落在 config.yml 的 ssl 段
+      { path: 'ssl', name: 'admin-ssl', component: SslPanel, meta: { title: 'SSL 证书' } },
       // 进阶功能：授权引擎。改造前路径是 /admin/license，接口与二进制已改名 engine
       { path: 'engine', name: 'admin-engine', component: () => import('@/views/admin/EngineView.vue'), meta: { title: '进阶功能' } },
       { path: 'about', name: 'admin-about', component: () => import('@/views/admin/AboutView.vue'), meta: { title: '升级日志' } },

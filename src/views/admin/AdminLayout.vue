@@ -78,10 +78,15 @@ const MENU_GROUPS = computed(() => [
 
 // 「系统」组的条目。定制分支已把后台自己的「在线升级」入口整条删除 ——
 // 定制包不走主线的发布位，唯一的在线链路是客户端设置里的 mytv 编译基底。
+//
+// 「SSL 证书」两项授权都显示（主线/定制都要配 HTTPS），所以放在无条件段，
+// 只有「下载页编辑」按 isCustom 追加。
 function sysItems() {
   const list = [
     // 系统公告已并入「客户端设置」，这里只剩管理员设置
     { key: 'admins', label: '管理员设置', icon: 'user', paths: ['/admin/admins'] },
+    // HTTPS：上传/粘贴证书、开关 443 与 80 强制跳转、查看证书信息
+    { key: 'ssl', label: 'SSL 证书', icon: 'shield', paths: ['/admin/ssl'] },
   ]
   if (isCustom.value) {
     list.push({ key: 'dlEdit', label: '下载页编辑', icon: 'palette', paths: ['/admin/dlEdit'] })
