@@ -50,6 +50,12 @@ export const API = {
   adminClientUploadBase: '/api/client/uploadBaseApk',
   adminClientCheckBase: '/api/client/checkBase',
   adminClientUpgradeBase: '/api/client/upgradeBase',
+  // 清和壳（独立客户端基底）：与 骆驼壳 同构，路径带 /qh
+  adminClientQhData: '/api/client/qh/data',
+  adminClientQhBuildStatus: '/api/client/qh/buildStatus',
+  adminClientQhUploadBase: '/api/client/qh/uploadBaseApk',
+  adminClientQhCheckBase: '/api/client/qh/checkBase',
+  adminClientQhUpgradeBase: '/api/client/qh/upgradeBase',
   // 在线检查/升级编译基底（远端 mytv-vX.Y.Z 序列，走 until/ghnet.go 的直连+国内加速）
   adminClientMyTVCheckBase: '/api/clientMyTV/checkBase',
   adminClientMyTVUpgradeBase: '/api/clientMyTV/upgradeBase',
@@ -164,6 +170,25 @@ export const CLIENT_ROUTES = {
   adInfo: '/api/client/adInfo',
   // 公告：保存客户端启动时弹出的那条文案（原先在 /api/notice/save）
   noticeSave: '/api/client/noticeSave',
+}
+
+/** 清和壳（/api/client/qh）—— 与 骆驼壳 同构，只是路径带 /qh。
+ *  图标/背景/解码/缓冲/授权/提示/广告/公告是全局配置，仍走 /api/client/*；
+ *  只有编译/发布/基底三件套走 /qh。 */
+export const CLIENT_ROUTES_QH = {
+  deleteIcon: '/api/client/deleteIcon',
+  deleteBj: '/api/client/deleteBj',
+  decoder: '/api/client/decoder',
+  buffTimeout: '/api/client/buffTimeout',
+  needAuthor: '/api/client/needAuthor',
+  tipSet: '/api/client/tipSet',
+  adInfo: '/api/client/adInfo',
+  noticeSave: '/api/client/noticeSave',
+  // 清和壳专属：编译 / 发布 / 在线检查升级基底
+  appInfo: '/api/client/qh/appInfo',
+  publish: '/api/client/qh/publish',
+  checkBase: '/api/client/qh/checkBase',
+  upgradeBase: '/api/client/qh/upgradeBase',
 }
 
 /** 进阶功能（授权引擎，/api/engine）—— 改造前叫 license */
