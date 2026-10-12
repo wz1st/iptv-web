@@ -562,6 +562,11 @@ async function saveAdInfo() {
               基包包名
               <span class="ui-badge ui-badge--muted">{{ basePkg || '-' }}</span>
             </div>
+            <!-- 这一行 custom 从一开始就用页内统一的 ui-inline（flex + gap:6px）+ label margin:0，
+                 本来就不存在「两个按钮粘在一起」的问题（main 是到 1a70d03 才把没有样式的
+                 ui-btns 换掉的，merge-base 里还没有这个功能，两边各写了一份才冲突）。
+                 所以保留 custom 的写法，不换成 main 的裸 ui-inline（那会变成 10px，与本页其它
+                 按钮行不一致）。本批这一行的实际改动只有「默认背景图」那一处 CSS。 -->
             <div class="ui-inline" style="gap: 6px">
               <label class="ui-btn ui-btn--primary" style="margin: 0">
                 上传基包
@@ -826,9 +831,12 @@ async function saveAdInfo() {
   aspect-ratio: 16 / 9;
   border-radius: 6px;
   overflow: hidden;
-  /* 没设背景图时的默认底色 —— 与 APK 里"未配置背景"时的呈现一致；
-     上传后由内联 background-image 盖住这层纯色。 */
-  background-color: #449fe9;
+  /* 没上传背景图时显示**星野图** —— 与 APK 里"未配置背景"时的默认启动背景是同一张
+     （字节相同：iptv-apk-rebuilt/tv/src/main/res/drawable/qh_bg.png，sha256 3ad0ce51…）。
+     上传后由内联 background-image 盖住它。
+     底色只在这张图还没解码出来时闪一下，取的是原图天空区的主色调。 */
+  background-color: #02136a;
+  background-image: url('/static/images/qh_bg.png');
   background-size: cover;
   background-position: center;
 }
