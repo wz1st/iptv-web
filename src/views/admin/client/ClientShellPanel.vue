@@ -1,6 +1,6 @@
 <script setup>
-// 客户端设置（可复用于 清和壳 / 骆驼壳）—— shell 决定走哪套路由（/api/client 或 /api/client/lt）。
-// 编译接口（BuildClientApk）两者共用，只路由与版本文件分开。
+// 客户端设置（可复用于 骆驼壳 / 清和壳）—— shell 决定走哪套路由（/api/client/lt 或 /api/client）。
+// 重构自 admin_client.html（192 行），编译接口（BuildClientApk）两者共用，只路由与版本文件分开。
 // 数据源：POST /api/client/data（一次给全线上包与待发布包的版本号/大小/MD5/下载地址）
 // 动作端点（一个动作一条路由，请求体 JSON）：……
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
@@ -9,22 +9,30 @@ import { submitAction, submitUpload } from '@/utils/page'
 import { notify } from '@/utils/feedback'
 import { confirm } from '@/utils/confirm'
 import { isCoarsePointer } from '@/utils/touchTap'
-import { isCustom } from '@/utils/site'
 import { API, CLIENT_ROUTES, CLIENT_ROUTES_LT } from '@/api/endpoints'
+import AppSwitch from '@/components/AppSwitch.vue'
 
 // shell 决定走哪一套客户端：
-//   'lt'     骆驼壳 = client/smali 树编出来的那套（/api/client/lt，**主槽位**，资产 Client_lt.apk）
-//   'qinghe' 清和壳 = Client.apk 那套（/api/client，资产 Client.apk）
-// 编译接口（BuildClientApk）两者共用，这里只是路由与版本文件分开。
+//   'lt'     骆驼壳 = 独立基底 Client_lt.apk 那套（/api/client/lt，**主槽位**，走 smali 注入地址）
+//   'qinghe' 清和壳 = Client.apk 那套（/api/client，走 string 资源注入地址）
+// 编译接口（BuildClientApk）两者共用，这里只是路由与基底文件分开。
 const props = defineProps({
   shell: { type: String, default: 'lt' },
 })
-// 每个实例的 shell 固定，直接按它挑路由表（shared 字段 deleteIcon/decoder/... 两表一致）。
+// 每个实例的 shell 固定，直接按它挑路由表。
+// **注意 deleteIcon / deleteBj / uploadIcon / uploadBj 四件两表已不再相同** ——
+// 图标与背景是两个壳各自一套（清和壳 /config/images/{icon,bj}，骆驼壳
+// /config/images/lt/*），只有 decoder / buffTimeout / needAuthor / tipSet 这些
+// 全局配置还两表一致。
 const A = props.shell === 'lt' ? CLIENT_ROUTES_LT : CLIENT_ROUTES
 const dataUrl = props.shell === 'lt' ? API.adminClientLtData : API.adminClientData
 const buildStatusUrl = props.shell === 'lt' ? API.adminClientLtBuildStatus : API.adminClientBuildStatus
 const uploadBaseUrl = props.shell === 'lt' ? API.adminClientLtUploadBase : API.adminClientUploadBase
-import AppSwitch from '@/components/AppSwitch.vue'
+// 图标 / 背景的对外 URL 前缀，必须与后端 until.ClientIconURLPrefix /
+// ClientBgURLPrefix 逐字一致：清和壳 /icon/ 与 /images/，骆驼壳 /lt/icon/ 与
+// /lt/images/。写错时后端上传是成功的，只是预览永远 404（静默）。
+const ICON_PREFIX = props.shell === 'lt' ? '/lt/icon/' : '/icon/'
+const BJ_PREFIX = props.shell === 'lt' ? '/lt/images/' : '/images/'
 
 const d = ref(null)
 const loading = ref(true)
@@ -62,12 +70,6 @@ const bjList = ref([])          // [{ name, url }]
 /** 右侧预览用哪张背景（点缩略图切换；留空时取第一张） */
 const previewBjName = ref('')
 
-/* ---- 广告内容（定制授权专属）----
-  客户端退出弹窗里那行字，下发字段是登录响应的 qqinfo（后端 site.ad）。
-  非定制授权下后端会拒绝写入、下发也恒为作者博客，所以这里只在定制授权下露出。 */
-const adInfo = ref('')
-const savingAd = ref(false)
-
 /* ---- 应用默认设置 ---- */
 const decoder = ref(0)
 const buffTimeout = ref(5)
@@ -90,18 +92,17 @@ const hasCurrent = computed(() => Boolean(curSize.value) && curSize.value !== '0
 // 下载下来是个半截包，md5 也还在变。所以"存在"之外还要 `!building`。
 const canUseNew = computed(() => newExists.value && !building.value)
 
-// 客户端对外版本号 = **基底版本 + "." + 三位编译号**（1.0.0.001），与 mytv 同一条规则。
+// 新版本的编译号 = 当前版本**末段**数字 +1，与 mytv 面板同一条规则。
 //
-// ★ 这里过去写的是 nextVersion()：对**完整版本号**的末位数字 +1，再把完整串
-// 交给服务端。而服务端 until.FormatClientVersion(base, buildNo) 把传入值当
-// **纯编译号**，还要再拼一次基底（1.0.0 + "." + buildNo）⇒ 每点一次编译多叠一层。
-// 线上因此出现过 8 段的 `1.0.0.1.0.0.1.1`（当前版本 `1.0.0.1.0` 也是这么来的）。
+// ★ 这里过去写的是「对完整版本号做末位 +1」（nextVersion），是错的：
+// 服务端 until.FormatClientVersion(base, buildNo) 把传入值当**纯编译号**，
+// 再拼一次基底版本（1.0.0 + "." + buildNo）。前端若传完整串 `1.0.0.001`，
+// 编译出来就是 `1.0.0.1.0.0.001` —— 每点一次编译多叠一层，
+// 线上出现过 8 段的 `1.0.0.1.0.0.1.1`。
 //
-// 现在 form.version 只存**纯编译号**，完整串只用于给人看（newVersionBadge）。
-//
-// **编译号必须补足三位**：底包 versionName 末段就是三位，编译时是二进制 manifest
+// **必须补足三位**：底包 versionName 末段就是三位，编译时是二进制 manifest
 // 里的定长字节替换，新旧串不等长就把 manifest 写坏；客户端还按字符串比版本，
-// 不补零时 1.0.0.009 会被判成比 1.0.0.010 更旧。
+// 不补零时 1.0.0.9 会被判成比 1.0.0.12 新。
 function pad3(n) {
   return String(n).padStart(3, '0')
 }
@@ -129,26 +130,26 @@ function lastBuildNo(v) {
   if (!m) return ''
   return pad3(Math.min(Number(m[1]), 999))
 }
-
 /** 线上版本的**编译号**（末段）；线上版本号不带基底前缀时按"还没编过"处理。 */
 function currentBuildNo() {
   const base = String(baseVersion.value || '')
   const cur = String(currentVersion.value || '')
   // 线上版本号必须是 `基底.编译号` 才认它的末段。
-  // 换基底后旧版本号（1.0.0.005 vs 新基底 2.0.0）不匹配 ⇒ 编译号从 001 重新起，
-  // 这是对的：新基底的第一版就该是 2.0.0.001。
+  // 换基底后旧版本号（1.0.0.005 vs 新基底 2.0.0）不匹配 ⇒ 返回空串，
+  // 编译号由 nextBuildNo('') 落到 001 —— 新基底的第一版就该是 2.0.0.001。
   if (!base || !cur.startsWith(base + '.')) return ''
   return (cur.match(/(\d+)$/) || ['', ''])[1]
 }
-
 // 给「新版本」卡片徽章看的完整版本串（1.0.0.001 → 1.0.0.002）。
+// 线上包还没产出过（拿不到完整版本号）时，用基底版本 + 001 兜底。
 const nextVersionFull = computed(() => {
   const base = String(baseVersion.value || '')
   if (!base) return ''
   return `${base}.${nextBuildNo(currentBuildNo())}`
 })
 
-// 徽章显示：优先用表单里已选的编译号（用户可能手动改过），否则用推算值。
+// 徽章上显示的完整版本串。form.version 存的是**纯编译号**（服务端契约），
+// 徽章要给人看的是「基底.编译号」—— 混起来就成了截图里那种 8 段串。
 // 无论哪条路径，**发出去的都是纯编译号**，完整串只在这一处拼。
 const newVersionBadge = computed(() => {
   const base = String(baseVersion.value || '')
@@ -158,16 +159,32 @@ const newVersionBadge = computed(() => {
   return `${base}.${no}`
 })
 
+// 编译号补算。baseVersion 只在 buildStatus 的 data 里（client/data 不带），
+// 首屏进 load() 时还没有 ⇒ 必须在 baseVersion 赋值**之后**再调一次。
+// 注意必须走 currentBuildNo()，不能直接对 currentVersion 取末段 ——
+// 那样换基底后会从旧基底的号继续递增，重新引入叠加 bug。
+function ensureBuildNo() {
+  if (String(form.value.version || '').trim()) return
+  form.value.version = nextBuildNo(currentBuildNo())
+}
+
 /* ---- 右侧模拟电视：背景取"用户点选的那张"，没有就取第一张 ---- */
 const previewBj = computed(() =>
   bjList.value.find((b) => b.name === previewBjName.value) || bjList.value[0] || null
 )
-/** 没上传图标时画的内置默认图标 —— 复制自 client/res/drawable-hdpi/icon.png */
+/** 没上传图标时画的内置默认图标 —— 两个壳的基底里**是同一张图**
+ *  （sha256 c2f8070…，iptv-apk-rebuilt/…/res/drawable/icon.png 与
+ *  client/res/drawable-hdpi/icon.png 逐字节相同），所以这一张够两壳用。 */
 const tvIconUrl = computed(() => iconUrl.value || '/static/images/icon.png')
 const previewBjUrl = computed(() => previewBj.value?.url || '')
-const tvScreenStyle = computed(() =>
-  previewBjUrl.value ? { backgroundImage: `url(${previewBjUrl.value})` } : {}
-)
+/** 没上传背景图时的兜底预览图 —— **按壳分**：清和壳是 qh_bg.png（星野图，与
+ *  iptv-apk-rebuilt/…/res/drawable/qh_bg.png 逐字节相同），骆驼壳是 ez_bg.png
+ *  （ez 壳的 windowBackground，取自 client/res/drawable-hdpi/ez_bg.png）。
+ *  共用一张的视觉效果是"骆驼壳那一页显示的是清和壳的启动图"，正好是这次要拆开的东西。 */
+const tvBgFallback = props.shell === 'lt' ? '/static/images/lt_bg.png' : '/static/images/qh_bg.png'
+const tvScreenStyle = computed(() => ({
+  backgroundImage: `url(${previewBjUrl.value || tvBgFallback})`,
+}))
 
 async function load() {
   loading.value = true
@@ -178,10 +195,9 @@ async function load() {
     currentVersion.value = g.build?.version || ''
     form.value = {
       appName: g.build?.name || '',
-      // 已有待发布的包就沿用它（服务端存的就是纯编译号）。
-      // 没有时先置空 —— 编译号要用基底版本才能推算，而 baseVersion 要等下面那次
-      // buildStatus 才拿到（见文件末尾的补算）。这里若用 nextBuildNo(g.build.version)
-      // 就会对**完整版本号**取末段，重新引入"叠加基底"那个 bug。
+      // 已有待发布的包就沿用它（服务端存的就是纯编译号）；
+      // 否则先留空，等基底版本拿到后由 ensureBuildNo() 按「当前版本末位 +1」补算。
+      // 这里绝不能直接算 —— 此刻 baseVersion 还没拉下来。
       version: g.newVersion || '',
     }
     curSize.value = g.upSize || ''
@@ -194,9 +210,7 @@ async function load() {
     newApkUrl.value = g.newApkUrl || ''
     newApkName.value = g.newApkName || ''
     iconUrl.value = g.iconUrl || ''
-    bjList.value = (g.bjUrl || []).map((n) => ({ name: n, url: `/images/${n}.png` }))
-    // 后端回的是"最终生效值"：没配过时给的是默认文案，照原样回填即可。
-    adInfo.value = g.adInfo || ''
+    bjList.value = (g.bjUrl || []).map((n) => ({ name: n, url: `${BJ_PREFIX}${n}.png` }))
     decoder.value = Number(g.app?.decoder ?? 0)
     buffTimeout.value = Number(g.app?.buffTimeout ?? 5)
     needAuthor.value = Number(g.app?.needAuthor ?? 0)
@@ -217,20 +231,10 @@ async function load() {
         applyBuildStatus(st?.data)
       } catch { /* 顶栏已有错误提示，这里不重复弹 */ }
     }
-
-    // 基底版本到手后才能推算新编译号（顺序依赖，所以放在最后）。
-    // 编译中时轮询会刷 applyBuildStatus，那边也会补算。
     ensureBuildNo()
   } catch { /* http.js 已处理 */ } finally {
     loading.value = false
   }
-}
-
-/** 没有待发布包时，按「线上编译号 +1」补一个新编译号。
- *  已有（g.newVersion）不动 —— 那是服务端已落盘的事实。 */
-function ensureBuildNo() {
-  if (String(form.value.version || '').trim()) return
-  form.value.version = nextBuildNo(currentBuildNo())
 }
 onMounted(load)
 
@@ -257,8 +261,10 @@ function onUrlTap() {
 async function onIconPick(e) {
   const file = e.target.files?.[0]
   if (!file) return
-  const res = await submitUpload(API.adminClientUploadIcon, file, 'iconfile')
-  if (res?.code === 1) iconUrl.value = res.data?.url || '/icon/icon.png'
+  // 端点按壳取（A.uploadIcon）：用错的那个会把图存进**另一个壳**的目录，
+  // 而且响应同样是"上传成功"。
+  const res = await submitUpload(A.uploadIcon, file, 'iconfile')
+  if (res?.code === 1) iconUrl.value = res.data?.url || `${ICON_PREFIX}icon.png`
   if (iconInput.value) iconInput.value.value = ''
 }
 
@@ -272,9 +278,9 @@ async function removeIcon() {
 async function onBjPick(e) {
   const file = e.target.files?.[0]
   if (!file) return
-  const res = await submitUpload(API.adminClientUploadBj, file, 'bjfile')
+  const res = await submitUpload(A.uploadBj, file, 'bjfile')
   if (res?.code === 1 && res.data?.name) {
-    bjList.value.push({ name: res.data.name, url: `/images/${res.data.name}.png` })
+    bjList.value.push({ name: res.data.name, url: `${BJ_PREFIX}${res.data.name}.png` })
     // 新上传的立刻成为预览对象 —— 边传边看
     previewBjName.value = res.data.name
   }
@@ -328,22 +334,17 @@ async function checkAndUpgradeBase() {
 /* ---------------- 编译：只产出「待发布」包，线上一个字节都不动 ---------------- */
 async function buildApk() {
   if (!form.value.appName) { notify('应用名不能为空', 'warning'); return }
-  const buildNo = String(form.value.version || '').trim()
-  if (!buildNo) { notify('新版本号不能为空', 'warning'); return }
-  // 与「当前版本相同」的判断要按**编译后的完整版本号**比，不是按 form.version
-  // 直接比 —— 它现在存的是纯编译号（002），而 currentVersion 是完整串
-  // （1.0.0.002），两者永远不可能相等 ⇒ 这个校验过去等于没生效，
-  // 线上 build.version=1.0.0 时也能拿 1.0.0 编译出同名版本。
-  const full = newVersionBadge.value
-  if (full && full === String(currentVersion.value || '')) {
+  if (!form.value.version) { notify('新版本号不能为空', 'warning'); return }
+  // 比编译号，不是比完整串 —— form.version 存的是纯编译号（002），
+  // currentVersion 是完整版本号（1.0.0.002），拿它们直接比永不相等，
+  // 校验会形同虚设。
+  if (form.value.version === currentBuildNo()) {
     notify('新版本号不能与当前版本相同', 'warning'); return
   }
   const res = await submitAction(A.appInfo, {
     serverUrl: serverUrl.value,
     appName: form.value.appName,
-    // 传纯编译号：服务端 until.FormatClientVersion 会拼上基底版本。
-    // 传完整串会被再拼一次基底，编出 1.0.0.1.0.0.002 这种多段版本号。
-    version: buildNo,
+    version: form.value.version,
     // 改造前这里要补一个 up_sets=0（语义「不勾选更新提示」），
     // 现在是明确的布尔字段
     upSet: false,
@@ -358,8 +359,6 @@ async function buildApk() {
 async function publishApk() {
   if (!canUseNew.value) { notify('请先编译新版本', 'warning'); return }
   const ok = await confirm(
-    // 用完整版本串（newVersionBadge）而不是 form.version —— 后者是纯编译号，
-    // 报"确定把 002 发布上线吗"用户看不出这是哪个版本。
     `确定把 ${newVersionBadge.value} 发布上线吗？发布后当前版本与所有下载链接都会换成这个包。`,
     { okText: '发布', okVariant: 'danger' }
   )
@@ -407,7 +406,7 @@ function applyBuildStatus(d) {
   if (d.name) apkName.value = d.name
   if (d.newName) newApkName.value = d.newName
   // 基底信息同源：换基底后这两个值会变，轮询时一并刷回来。
-  // **顺序要紧**：编译号要用基底版本才能推算，所以补算必须放在这两行之后。
+  // 顺序要紧：baseVersion 刷完后才能推算编译号，所以补算放在这两个 if 之后。
   if (d.baseVersion !== undefined) baseVersion.value = d.baseVersion || ''
   if (d.basePkg !== undefined) basePkg.value = d.basePkg || ''
   ensureBuildNo()
@@ -440,20 +439,6 @@ async function saveTips() {
     },
     { reload: load }
   )
-}
-
-/* ---------------- 广告内容（定制授权专属）----------------
-  「编译配置」那一行里的一个普通字段，但它**不随编译提交** ——
-  只改一行客户端文案却要等一次 APK 打包说不过去，所以自己一个端点、即点即存。 */
-async function saveAdInfo() {
-  if (savingAd.value) return
-  savingAd.value = true
-  try {
-    // reload：后端会把空白裁掉，回填一次才能看到真正存下的值。
-    await submitAction(A.adInfo, { adInfo: adInfo.value }, { reload: load })
-  } finally {
-    savingAd.value = false
-  }
 }
 </script>
 
@@ -488,7 +473,7 @@ async function saveAdInfo() {
           <!-- 应用名 / 图标 / 背景同一行：这三件都是"客户端长什么样"，
                挤成上下两行只让表单更长，不增加信息 -->
           <div class="ui-inline" style="margin-top: 6px; align-items: flex-start">
-            <div class="ui-field" style="flex: 1; min-width: 120px">
+            <div class="ui-field" style="flex: 1; min-width: 150px">
               <label class="ui-field__label">应用名</label>
               <input v-model="form.appName" class="ui-input" type="text" placeholder="应用名" />
             </div>
@@ -505,7 +490,7 @@ async function saveAdInfo() {
                 </div>
               </div>
             </div>
-            <div class="ui-field" style="flex: 2; min-width: 235px">
+            <div class="ui-field" style="flex: 2; min-width: 260px">
               <label class="ui-field__label">背景图片</label>
               <div class="ui-inline" style="gap: 6px">
                 <label class="ui-btn ui-btn--primary" style="margin: 0">
@@ -525,39 +510,13 @@ async function saveAdInfo() {
                 </div>
               </div>
             </div>
-            <!-- 广告内容（定制授权专属）：客户端退出弹窗里显示的那行字。
-                 单独一个端点即时保存 —— 它不参与编译，改一行文案不该等一次打包。
-                 .ui-inline 是 flex-wrap，换行判据看各项的**固有宽度**（= min-width）。
-                 这一行原有三项 min 合计 566px，1440 视口下行宽 772px ⇒ 第四项最多只能
-                 拿走约 205px。所以「应用名」的 min 由 150 收到 120、「背景图片」由 260
-                 收到 235，把空间让给这个要打字最长的字段（实测输入框 168px）。 -->
-            <div v-if="isCustom" class="ui-field" style="flex: 1 1 220px; min-width: 200px">
-              <label class="ui-field__label">广告内容</label>
-              <div class="ui-inline" style="gap: 6px">
-                <!-- .ui-input 是 width:100%，在 flex-wrap 容器里会被当成"固有宽度=整行"
-                     从而独占一行、把按钮顶到下一行；这里必须显式改成 flex:1 1 0。 -->
-                <input
-                  v-model="adInfo"
-                  class="ui-input"
-                  type="text"
-                  style="flex: 1 1 0; min-width: 0; width: auto"
-                  placeholder="作者博客: www.qingh.xyz"
-                  @keyup.enter="saveAdInfo"
-                />
-                <button
-                  class="ui-btn ui-btn--primary"
-                  type="button"
-                  :disabled="savingAd"
-                  @click="saveAdInfo"
-                >
-                  保存
-                </button>
-              </div>
-              <small class="ui-help">提示：留空即恢复默认（作者博客）。</small>
-            </div>
           </div>
           <small class="ui-help">
             提示：图片仅支持PNG格式，不超过800KB；多张背景图在客户端随机显示，点缩略图可切换右侧预览。
+            上传的图标与背景会在**编译时**打进安装包；没上传就用基包自带的默认图。
+            <br />
+            两个壳的图标与背景是**各自一套**：这里只改
+            {{ shell === 'lt' ? '骆驼壳' : '清和壳' }} 的图，另一个壳的包不受影响。
           </small>
 
           <!-- ============ 编译基底（底包）============ -->
@@ -576,13 +535,11 @@ async function saveAdInfo() {
               基包包名
               <span class="ui-badge ui-badge--muted">{{ basePkg || '-' }}</span>
             </div>
-            <!-- 这一行 custom 从一开始就用页内统一的 ui-inline（flex + gap:6px）+ label margin:0，
-                 本来就不存在「两个按钮粘在一起」的问题（main 是到 1a70d03 才把没有样式的
-                 ui-btns 换掉的，merge-base 里还没有这个功能，两边各写了一份才冲突）。
-                 所以保留 custom 的写法，不换成 main 的裸 ui-inline（那会变成 10px，与本页其它
-                 按钮行不一致）。本批这一行的实际改动只有「默认背景图」那一处 CSS。 -->
-            <div class="ui-inline" style="gap: 6px">
-              <label class="ui-btn ui-btn--primary" style="margin: 0">
+            <!-- 两个按钮并排：类名 ui-btns 一直没有对应样式（全仓只此一处引用），
+                 结果是两者之间只剩一个空格的宽度、视觉上粘在一起。改用现成的
+                 ui-inline（flex + gap:10px），与页里其它按钮行同一口径。 -->
+            <div class="ui-inline">
+              <label class="ui-btn ui-btn--primary">
                 上传基包
                 <input ref="baseInput" type="file" accept=".apk,application/vnd.android.package-archive"
                   style="display: none" @change="onBasePick" />
@@ -655,8 +612,8 @@ async function saveAdInfo() {
           </div>
           <small class="ui-help">
             提示：「编译」只产出待发布安装包，线上文件与版本号不动；点「发布」才把新包替换上去，
-            下载页与客户端自升级同时切到新版本。版本号 = 基底版本 + 三位编译号，
-            新版本号自动取当前编译号末位 +1；换基底后编译号从 001 重新起。
+            下载页与客户端自升级同时切到新版本。版本号自动取「基底版本 + 末位 +1」，
+            形如 1.0.0.002（编译号恒三位）；换基底后编译号从 001 重新起。
           </small>
         </div>
 

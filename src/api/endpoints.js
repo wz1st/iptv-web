@@ -26,11 +26,8 @@ export const API = {
   adminClientNoticeData: '/api/client/noticeData',
   adminClientData: '/api/client/data',
   adminClientMyTVData: '/api/clientMyTV/data',
-  // 定制APK（定制授权专属）：后端全在引擎里，api 只转发
-  adminClientCustomData: '/api/clientCustom/data',
-  // 下载页编辑（定制授权专属）：开关 + 站内文件树
-  adminDlStatus: '/api/dl/status',
   adminAdminsData: '/api/admins/data',
+  adminUpdataData: '/api/updata/data',
   adminAboutData: '/api/about/data',
   adminEngineData: '/api/engine/data',
   // SSL 证书（系统菜单）：证书信息、开关、nginx 版本、文件路径
@@ -41,29 +38,36 @@ export const API = {
   adminEngineLog: '/api/engine/log',
   adminClientBuildStatus: '/api/client/buildStatus',
   adminClientMyTVBuildStatus: '/api/clientMyTV/buildStatus',
-  adminClientCustomBuildStatus: '/api/clientCustom/buildStatus',
+  adminUpdataCheckWeb: '/api/updata/checkWeb',
+  adminUpdataCheckFront: '/api/updata/checkFront',
+  adminUpdataCheckEngine: '/api/updata/checkEngine',
+  adminUpdataDownWeb: '/api/updata/downWeb',
+  adminUpdataDownFront: '/api/updata/downFront',
+  adminUpdataDownEngine: '/api/updata/downEngine',
+  adminUpdata: '/api/updata/run',
 
   // ---- 文件上传（multipart/form-data，不参与 JSON 化）----
-  adminClientUploadIcon: '/api/client/uploadIcon',
-  adminClientUploadBj: '/api/client/uploadBj',
-  // 客户端编译基底：上传走 multipart，在线检查/升级走远端 client-vX.Y.Z 序列
-  adminClientUploadBase: '/api/client/uploadBaseApk',
+  // 客户端图标 / 背景的上传**不在这一组**：这两个是**按壳分**的端点（清和壳
+  // /api/client/uploadIcon、骆驼壳 /api/client/lt/uploadIcon），见 CLIENT_ROUTES /
+  // CLIENT_ROUTES_LT 里的 uploadIcon / uploadBj。
+  // 在线检查/升级编译基底（远端 mytv-vX.Y.Z 序列，走 until/ghnet.go 的直连+国内加速）
+  adminClientMyTVCheckBase: '/api/clientMyTV/checkBase',
+  adminClientMyTVUpgradeBase: '/api/clientMyTV/upgradeBase',
+  adminClientMyTVUploadBase: '/api/clientMyTV/uploadBaseApk',
+  // 客户端基底的同构三件套，但序列是 client-vX.Y.Z，且编译全在 api 侧（不经引擎）
   adminClientCheckBase: '/api/client/checkBase',
   adminClientUpgradeBase: '/api/client/upgradeBase',
-  // 骆驼壳（独立客户端基底）：与 清和壳 同构，路径带 /lt
+  adminClientUploadBase: '/api/client/uploadBaseApk',
+  // 骆驼壳（独立客户端基底，主槽位）：与 清和壳 同构，路径带 /lt。
+  // 图标 / 背景也是**分开的两套**（目录 /config/images/lt/*，URL 前缀 /lt/icon、
+  // /lt/images），所以上传走 adminClientLtUploadIcon / adminClientLtUploadBj ——
+  // 用清和壳那两个端点只会把图传到清和壳的目录里（后端不会报错，也不会生效）；
+  // 解码 / 缓冲 / 授权 / 提示 / 公告仍是全局配置，走 /api/client/*。
   adminClientLtData: '/api/client/lt/data',
   adminClientLtBuildStatus: '/api/client/lt/buildStatus',
   adminClientLtUploadBase: '/api/client/lt/uploadBaseApk',
   adminClientLtCheckBase: '/api/client/lt/checkBase',
   adminClientLtUpgradeBase: '/api/client/lt/upgradeBase',
-  // 在线检查/升级编译基底（远端 mytv-vX.Y.Z 序列，走 until/ghnet.go 的直连+国内加速）
-  adminClientMyTVCheckBase: '/api/clientMyTV/checkBase',
-  adminClientMyTVUpgradeBase: '/api/clientMyTV/upgradeBase',
-  adminClientMyTVUploadBase: '/api/clientMyTV/uploadBaseApk',
-  // 定制编译基底上传（multipart）：**不做包名检查**，校验与记账在引擎里
-  adminClientCustomUploadBase: '/api/clientCustom/uploadBaseApk',
-  // 下载页编辑的文件上传（multipart，字段名 file；相对路径走表单字段 path）
-  adminDlUpload: '/api/dl/upload',
   adminChannelsUploadPayList: '/api/channels/uploadPayList',
   adminEpgsUploadLogo: '/api/epgs/uploadLogo',
 }
@@ -154,6 +158,10 @@ export const EPG_FROM_ROUTES = {
 
 /** 清和客户端（/api/client）—— 开关与文案各一条路由 */
 export const CLIENT_ROUTES = {
+  // 上传 / 删除图标与背景：只动**清和壳**的素材目录（/config/images/{icon,bj}，
+  // URL 前缀 /icon、/images）。骆驼壳那一套在 CLIENT_ROUTES_LT 里，两边端点不同。
+  uploadIcon: '/api/client/uploadIcon',
+  uploadBj: '/api/client/uploadBj',
   deleteIcon: '/api/client/deleteIcon',
   deleteBj: '/api/client/deleteBj',
   decoder: '/api/client/decoder',
@@ -166,23 +174,23 @@ export const CLIENT_ROUTES = {
   // 编译基底（底包）：查远端 client-vX.Y.Z / 在线升级（上传走 multipart，在 API 里）
   checkBase: '/api/client/checkBase',
   upgradeBase: '/api/client/upgradeBase',
-  // 广告内容：客户端退出弹窗里显示的那行字（仅定制授权可改，对应下发的 qqinfo）
-  adInfo: '/api/client/adInfo',
   // 公告：保存客户端启动时弹出的那条文案（原先在 /api/notice/save）
   noticeSave: '/api/client/noticeSave',
 }
 
-/** 骆驼壳（/api/client/lt）—— 与 清和壳 同构，只是路径带 /lt。
- *  图标/背景/解码/缓冲/授权/提示/广告/公告是全局配置，仍走 /api/client/*；
- *  只有编译/发布/基底三件套走 /lt。 */
+/** 骆驼壳（/api/client/lt）—— 与 清和壳 同构，只是路径带 /lt，且它是**主槽位**。
+ *  图标/背景也是**各自一套**（/config/images/lt/*，URL 前缀 /lt/icon、/lt/images），
+ *  所以上传/删除都走 /api/client/lt/*；解码/缓冲/授权/提示/公告仍是全局配置，
+ *  走 /api/client/*。 */
 export const CLIENT_ROUTES_LT = {
-  deleteIcon: '/api/client/deleteIcon',
-  deleteBj: '/api/client/deleteBj',
+  uploadIcon: '/api/client/lt/uploadIcon',
+  uploadBj: '/api/client/lt/uploadBj',
+  deleteIcon: '/api/client/lt/deleteIcon',
+  deleteBj: '/api/client/lt/deleteBj',
   decoder: '/api/client/decoder',
   buffTimeout: '/api/client/buffTimeout',
   needAuthor: '/api/client/needAuthor',
   tipSet: '/api/client/tipSet',
-  adInfo: '/api/client/adInfo',
   noticeSave: '/api/client/noticeSave',
   // 骆驼壳专属：编译 / 发布 / 在线检查升级基底
   appInfo: '/api/client/lt/appInfo',
@@ -206,7 +214,7 @@ export const ENGINE_ROUTES = {
   shortURL: '/api/engine/shortURL',
 }
 
-/** MyTV 客户端（/api/clientMyTV）—— 编译/发布与清和同一套三段语义 */
+/** MyTV 客户端（/api/clientMyTV）—— 编译/发布与清和壳同一套三段语义 */
 export const MYTV_ROUTES = {
   // 编译：只产待发布包（<MyTVName>-mytv-new.apk），线上包不动
   clientMyTV: '/api/clientMyTV/save',
@@ -215,29 +223,6 @@ export const MYTV_ROUTES = {
   // 上传编译基底 APK（multipart，字段名 apkfile）：包名须与镜像内底包一致，
   // 版本号从包里提取成基底版本（详见 service.UploadMytvBaseApk）
   uploadBaseApk: '/api/clientMyTV/uploadBaseApk',
-}
-
-/** 只有定制授权才显示的「定制APK」（/api/clientCustom）—— 与 mytv 同一套三段语义 */
-export const CUSTOM_ROUTES = {
-  // 编译：只产待发布包，线上包不动（校验与编译都在引擎里）
-  save: '/api/clientCustom/save',
-  // 发布：待发布包 rename 上位并落版本号
-  publish: '/api/clientCustom/publish',
-  // 上传定制编译基底 APK（multipart，字段名 apkfile）：**不检查包名**
-  uploadBaseApk: '/api/clientCustom/uploadBaseApk',
-}
-
-/** 只有定制授权才显示的「下载页编辑」（/api/dl）—— 后端全在引擎里 */
-export const DL_ROUTES = {
-  list: '/api/dl/list',
-  read: '/api/dl/read',
-  write: '/api/dl/write',
-  rename: '/api/dl/rename',
-  delete: '/api/dl/delete',
-  mkdir: '/api/dl/mkdir',
-  toggle: '/api/dl/toggle',
-  // 默认下载页按钮（骆驼壳 / 清和壳 / MyTV / 定制 / 进后台）的显隐，整体覆盖写
-  buttons: '/api/dl/buttons',
 }
 
 /** SSL 证书（/api/ssl）—— 证书落在 /config/cert，开关落在 config.yml 的 ssl 段 */
