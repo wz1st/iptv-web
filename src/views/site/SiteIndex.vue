@@ -7,6 +7,11 @@ const dto = ref({
   show_down: false,
   apk_url: '',
   apk_name: '',
+  // 清和壳：服务端并行提供两个壳，下载页要分别给按钮（字段见 dto.IndexDto）。
+  // 主槽位是骆驼壳，所以它占用 apk_* 这三个沿用下来的字段。
+  show_down_qh: false,
+  apk_qh_url: '',
+  apk_qh_name: '',
   show_down_mytv: false,
   mytv_url: '',
   mytv_name: '',
@@ -18,9 +23,13 @@ const dto = ref({
   show_admin: true,
 })
 
-/** 三个下载按钮一个都显示不出来时给一句提示，别让用户对着空区域发呆。 */
+/** 四个下载按钮一个都显示不出来时给一句提示，别让用户对着空区域发呆。 */
 const noDownload = computed(
-  () => !dto.value.show_down && !dto.value.show_down_mytv && !dto.value.show_down_custom
+  () =>
+    !dto.value.show_down &&
+    !dto.value.show_down_qh &&
+    !dto.value.show_down_mytv &&
+    !dto.value.show_down_custom
 )
 
 onMounted(async () => {
@@ -73,11 +82,19 @@ const img = {
                 :href="dto.apk_url"
                 :download="dto.apk_name"
               >
-                {{ dto.apk_name }}（骆驼）
+                {{ dto.apk_name }}（骆驼壳）
+              </a>
+              <a
+                v-if="dto.show_down_qh"
+                class="dl dl--secondary"
+                :href="dto.apk_qh_url"
+                :download="dto.apk_qh_name"
+              >
+                {{ dto.apk_qh_name }}（清和壳）
               </a>
               <a
                 v-if="dto.show_down_mytv"
-                class="dl dl--secondary"
+                class="dl dl--mytv"
                 :href="dto.mytv_url"
                 :download="dto.mytv_name"
               >
@@ -181,6 +198,9 @@ const img = {
 .dl:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(37, 99, 235, .22); text-decoration: none; }
 .dl--primary { background: #2563eb; color: #fff; }
 .dl--secondary { background: #0891b2; color: #fff; }
+/* MyTV 原用 --secondary，现在那个位置给了清和壳 —— 两个相邻按钮同色会让
+   「我要下哪个客户端」这件事在视觉上失去区分度，所以单给一档绿色。 */
+.dl--mytv { background: #059669; color: #fff; }
 .dl--custom { background: #7c3aed; color: #fff; }
 .dl--ghost { background: #fff; color: #2563eb; border: 1px solid #bfdbfe; }
 

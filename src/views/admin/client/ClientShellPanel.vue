@@ -1,5 +1,5 @@
 <script setup>
-// 客户端设置（可复用于 骆驼壳 / 清和壳）—— shell 决定走哪套路由（/api/client 或 /api/client/qh）。
+// 客户端设置（可复用于 清和壳 / 骆驼壳）—— shell 决定走哪套路由（/api/client 或 /api/client/lt）。
 // 编译接口（BuildClientApk）两者共用，只路由与版本文件分开。
 // 数据源：POST /api/client/data（一次给全线上包与待发布包的版本号/大小/MD5/下载地址）
 // 动作端点（一个动作一条路由，请求体 JSON）：……
@@ -10,18 +10,20 @@ import { notify } from '@/utils/feedback'
 import { confirm } from '@/utils/confirm'
 import { isCoarsePointer } from '@/utils/touchTap'
 import { isCustom } from '@/utils/site'
-import { API, CLIENT_ROUTES, CLIENT_ROUTES_QH } from '@/api/endpoints'
+import { API, CLIENT_ROUTES, CLIENT_ROUTES_LT } from '@/api/endpoints'
 
-// shell 决定走哪一套客户端：骆驼壳（luotuo，/api/client）或 清和壳（qh，/api/client/qh）。
+// shell 决定走哪一套客户端：
+//   'lt'     骆驼壳 = client/smali 树编出来的那套（/api/client/lt，**主槽位**，资产 Client_lt.apk）
+//   'qinghe' 清和壳 = Client.apk 那套（/api/client，资产 Client.apk）
 // 编译接口（BuildClientApk）两者共用，这里只是路由与版本文件分开。
 const props = defineProps({
-  shell: { type: String, default: 'luotuo' },
+  shell: { type: String, default: 'lt' },
 })
 // 每个实例的 shell 固定，直接按它挑路由表（shared 字段 deleteIcon/decoder/... 两表一致）。
-const A = props.shell === 'qh' ? CLIENT_ROUTES_QH : CLIENT_ROUTES
-const dataUrl = props.shell === 'qh' ? API.adminClientQhData : API.adminClientData
-const buildStatusUrl = props.shell === 'qh' ? API.adminClientQhBuildStatus : API.adminClientBuildStatus
-const uploadBaseUrl = props.shell === 'qh' ? API.adminClientQhUploadBase : API.adminClientUploadBase
+const A = props.shell === 'lt' ? CLIENT_ROUTES_LT : CLIENT_ROUTES
+const dataUrl = props.shell === 'lt' ? API.adminClientLtData : API.adminClientData
+const buildStatusUrl = props.shell === 'lt' ? API.adminClientLtBuildStatus : API.adminClientBuildStatus
+const uploadBaseUrl = props.shell === 'lt' ? API.adminClientLtUploadBase : API.adminClientUploadBase
 import AppSwitch from '@/components/AppSwitch.vue'
 
 const d = ref(null)

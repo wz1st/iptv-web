@@ -50,12 +50,12 @@ export const API = {
   adminClientUploadBase: '/api/client/uploadBaseApk',
   adminClientCheckBase: '/api/client/checkBase',
   adminClientUpgradeBase: '/api/client/upgradeBase',
-  // 清和壳（独立客户端基底）：与 骆驼壳 同构，路径带 /qh
-  adminClientQhData: '/api/client/qh/data',
-  adminClientQhBuildStatus: '/api/client/qh/buildStatus',
-  adminClientQhUploadBase: '/api/client/qh/uploadBaseApk',
-  adminClientQhCheckBase: '/api/client/qh/checkBase',
-  adminClientQhUpgradeBase: '/api/client/qh/upgradeBase',
+  // 骆驼壳（独立客户端基底）：与 清和壳 同构，路径带 /lt
+  adminClientLtData: '/api/client/lt/data',
+  adminClientLtBuildStatus: '/api/client/lt/buildStatus',
+  adminClientLtUploadBase: '/api/client/lt/uploadBaseApk',
+  adminClientLtCheckBase: '/api/client/lt/checkBase',
+  adminClientLtUpgradeBase: '/api/client/lt/upgradeBase',
   // 在线检查/升级编译基底（远端 mytv-vX.Y.Z 序列，走 until/ghnet.go 的直连+国内加速）
   adminClientMyTVCheckBase: '/api/clientMyTV/checkBase',
   adminClientMyTVUpgradeBase: '/api/clientMyTV/upgradeBase',
@@ -152,7 +152,7 @@ export const EPG_FROM_ROUTES = {
   delete: '/api/epgFrom/delete',
 }
 
-/** 骆驼客户端（/api/client）—— 开关与文案各一条路由 */
+/** 清和客户端（/api/client）—— 开关与文案各一条路由 */
 export const CLIENT_ROUTES = {
   deleteIcon: '/api/client/deleteIcon',
   deleteBj: '/api/client/deleteBj',
@@ -172,10 +172,10 @@ export const CLIENT_ROUTES = {
   noticeSave: '/api/client/noticeSave',
 }
 
-/** 清和壳（/api/client/qh）—— 与 骆驼壳 同构，只是路径带 /qh。
+/** 骆驼壳（/api/client/lt）—— 与 清和壳 同构，只是路径带 /lt。
  *  图标/背景/解码/缓冲/授权/提示/广告/公告是全局配置，仍走 /api/client/*；
- *  只有编译/发布/基底三件套走 /qh。 */
-export const CLIENT_ROUTES_QH = {
+ *  只有编译/发布/基底三件套走 /lt。 */
+export const CLIENT_ROUTES_LT = {
   deleteIcon: '/api/client/deleteIcon',
   deleteBj: '/api/client/deleteBj',
   decoder: '/api/client/decoder',
@@ -184,11 +184,11 @@ export const CLIENT_ROUTES_QH = {
   tipSet: '/api/client/tipSet',
   adInfo: '/api/client/adInfo',
   noticeSave: '/api/client/noticeSave',
-  // 清和壳专属：编译 / 发布 / 在线检查升级基底
-  appInfo: '/api/client/qh/appInfo',
-  publish: '/api/client/qh/publish',
-  checkBase: '/api/client/qh/checkBase',
-  upgradeBase: '/api/client/qh/upgradeBase',
+  // 骆驼壳专属：编译 / 发布 / 在线检查升级基底
+  appInfo: '/api/client/lt/appInfo',
+  publish: '/api/client/lt/publish',
+  checkBase: '/api/client/lt/checkBase',
+  upgradeBase: '/api/client/lt/upgradeBase',
 }
 
 /** 进阶功能（授权引擎，/api/engine）—— 改造前叫 license */
@@ -206,7 +206,7 @@ export const ENGINE_ROUTES = {
   shortURL: '/api/engine/shortURL',
 }
 
-/** MyTV 客户端（/api/clientMyTV）—— 编译/发布与骆驼同一套三段语义 */
+/** MyTV 客户端（/api/clientMyTV）—— 编译/发布与清和同一套三段语义 */
 export const MYTV_ROUTES = {
   // 编译：只产待发布包（<MyTVName>-mytv-new.apk），线上包不动
   clientMyTV: '/api/clientMyTV/save',
@@ -236,7 +236,7 @@ export const DL_ROUTES = {
   delete: '/api/dl/delete',
   mkdir: '/api/dl/mkdir',
   toggle: '/api/dl/toggle',
-  // 默认下载页四个按钮（骆驼 / MyTV / 定制 / 进后台）的显隐，整体覆盖写
+  // 默认下载页四个按钮（清和 / MyTV / 定制 / 进后台）的显隐，整体覆盖写
   buttons: '/api/dl/buttons',
 }
 

@@ -9,6 +9,12 @@
 // {APK_NAME}/{MYTV_NAME}/{CUSTOM_NAME} 是 APK 名称（不含版本号与类型后缀）。
 // 页面里的相对引用（src/href/url()）会被自动改写成 /dl/ 前缀，
 // 所以子目录里的资源放在本地相对位置即可，不用自己写 /dl/。
+//
+// **{APK_URL} / {APK_NAME} / show_camel 归「骆驼壳」**（= 主槽位，与设置页 tab
+// 顺序、下载页首个按钮三处一致）。清和壳那三个字段（apk_qh_*）已在
+// /api/site/index 下发，但本页的 dl/status 还没有把它们摊进来 ——
+// 等 dl/status 补上 names.apk_qh_url / apk_qh_name 与 buttons.show_qh 之后，
+// 这里再加一组 {APK_QH_URL} / {APK_QH_NAME} 与一行开关。
 import { ref, computed, onMounted } from 'vue'
 import AppModal from '@/components/AppModal.vue'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -81,10 +87,10 @@ const statusBadge = computed(() => {
  *  （1:2 分栏下左栏只有 1/3 宽，长 URL 塞不进任何一个单元格）。 */
 const placeholderRows = computed(() =>
   [
-    { key: '{APK_URL}', desc: '骆驼客户端 APK 下载地址', value: names.value.apk_url },
+    { key: '{APK_URL}', desc: '骆驼壳客户端 APK 下载地址', value: names.value.apk_url },
     { key: '{MYTV_URL}', desc: 'MyTV 客户端 APK 下载地址', value: names.value.mytv_url },
     { key: '{CUSTOM_URL}', desc: '定制客户端 APK 下载地址', value: names.value.custom_url },
-    { key: '{APK_NAME}', desc: '骆驼客户端名称', value: names.value.apk_name },
+    { key: '{APK_NAME}', desc: '骆驼壳客户端名称', value: names.value.apk_name },
     { key: '{MYTV_NAME}', desc: 'MyTV 客户端名称', value: names.value.mytv_name },
     { key: '{CUSTOM_NAME}', desc: '定制客户端名称', value: names.value.custom_name },
   ].map((r) => ({ ...r, tip: String(r.value ?? '').trim() || '当前未配置' }))
@@ -95,7 +101,7 @@ const placeholderRows = computed(() =>
 const buttonRows = computed(() => [
   {
     key: 'show_camel',
-    label: '骆驼客户端下载按钮',
+    label: '骆驼壳客户端下载按钮',
     hint: exists.value.camel
       ? `已编译：${names.value.apk_name || '（名称未知）'}`
       : '尚未编译出 APK —— 即使打开也不会显示',

@@ -55,7 +55,7 @@ const MENU_GROUPS = computed(() => [
     title: '客户端',
     items: [
       { key: 'users', label: '设备管理', icon: 'device', paths: ['/admin/users', '/admin/authors'] },
-      // 骆驼、MyTV 与系统公告并成一页：公告与骆驼同标签堆叠，
+      // 清和、MyTV 与系统公告并成一页：公告与清和同标签堆叠，
       // MyTV 是第二个标签（自身按 isLic 决定是否出现，判据在 ClientSettingsView）
       { key: 'client', label: '客户端设置', icon: 'palette', paths: ['/admin/client', '/admin/clientMyTV'] },
     ],

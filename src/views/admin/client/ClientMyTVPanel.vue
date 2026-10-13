@@ -1,9 +1,9 @@
 <script setup>
-// MyTV 客户端设置 —— 与骆驼 ClientPanel 同一套「编译 → 待发布 → 发布」三段，
-// 差异只有四点（其余渲染/轮询/发布逻辑照骆驼复刻）：
+// MyTV 客户端设置 —— 与清和 ClientPanel 同一套「编译 → 待发布 → 发布」三段，
+// 差异只有四点（其余渲染/轮询/发布逻辑照清和复刻）：
 //   1. 编译在**引擎**里执行（WS buildMyTV），apktool 解包编译基底 APK；
-//   2. APK 连接地址是 mytv **独立**的（cfg.MyTV.ServerUrl），不与骆驼共用；
-//   3. 更新内容可配置（骆驼写死在 until.FixedUpdateText）；
+//   2. APK 连接地址是 mytv **独立**的（cfg.MyTV.ServerUrl），不与清和共用；
+//   3. 更新内容可配置（清和写死在 until.FixedUpdateText）；
 //   4. 编译基底 APK 可上传替换（落 /config/mytv，包名须与镜像内底包一致）。
 // 数据源：POST /api/clientMyTV/data（一次给全线上包与待发布包的版本号/大小/MD5/下载地址）
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
@@ -203,7 +203,7 @@ async function upgradeBase(c) {
 
 /* ---------------- 编译：只产出「待发布」包，线上一个字节都不动 ----------------
    版本号不提供输入框：编译号自动取「当前版本末段 +1」（新编版本号最后一位
-   自动加1），与骆驼的新版本号自动 +1 同一交互。 */
+   自动加1），与清和的新版本号自动 +1 同一交互。 */
 async function buildApk() {
   if (!serverUrl.value) { notify('APK连接地址不能为空', 'warning'); return }
   // 编译号自动 +1；封顶 999 时会与已发布版本相同，由后端「版本号不能相同」兜底拒绝。
@@ -234,7 +234,7 @@ async function publishApk() {
   await submitAction(MYTV_ROUTES.publish, {}, { reload: load })
 }
 
-/** 1s 轮询编译状态 —— 与骆驼同一套：两张卡片同源刷新 */
+/** 1s 轮询编译状态 —— 与清和同一套：两张卡片同源刷新 */
 function startPolling() {
   stopPolling()
   let requesting = false
@@ -288,7 +288,7 @@ onBeforeUnmount(stopPolling)
     <div class="ui-card">
       <div class="ui-card__header"><h4>MYTV编译配置</h4></div>
       <div class="ui-card__body">
-        <!-- APK 连接地址：mytv 独立，双击输入框解锁后可改（不与骆驼共用） -->
+        <!-- APK 连接地址：mytv 独立，双击输入框解锁后可改（不与清和共用） -->
         <div class="ui-field">
           <label class="ui-field__label">APK连接地址</label>
           <input
@@ -302,7 +302,7 @@ onBeforeUnmount(stopPolling)
             @dblclick="unlockUrl"
             @click="onUrlTap"
           />
-          <small class="ui-help">提示：这是 MyTV 客户端独立的连接地址，与骆驼客户端互不影响。双击输入框解锁后可修改（触屏设备单击即可），解锁时自动填充当前后台地址；若内网访问，请手动填写外网地址。</small>
+          <small class="ui-help">提示：这是 MyTV 客户端独立的连接地址，与清和客户端互不影响。双击输入框解锁后可修改（触屏设备单击即可），解锁时自动填充当前后台地址；若内网访问，请手动填写外网地址。</small>
         </div>
 
         <div class="ui-field" style="margin-top: 6px">
@@ -357,7 +357,7 @@ onBeforeUnmount(stopPolling)
         </div>
 
         <!-- ============ 版本：待发布 / 当前 ============ -->
-        <!-- 与骆驼同一套两张卡：一张负责"出一版新的"，一张负责"现在线上是什么"。 -->
+        <!-- 与清和同一套两张卡：一张负责"出一版新的"，一张负责"现在线上是什么"。 -->
         <div class="ver-grid">
           <section class="ver-card">
             <header class="ver-card__head">新版本</header>
@@ -455,7 +455,7 @@ onBeforeUnmount(stopPolling)
   pointer-events: none;
 }
 
-/* ---------- 版本卡片：新版本 / 当前版本（与骆驼 ClientPanel 同款） ---------- */
+/* ---------- 版本卡片：新版本 / 当前版本（与清和 ClientPanel 同款） ---------- */
 .ver-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
