@@ -236,7 +236,7 @@ export const DL_ROUTES = {
   delete: '/api/dl/delete',
   mkdir: '/api/dl/mkdir',
   toggle: '/api/dl/toggle',
-  // 默认下载页四个按钮（清和 / MyTV / 定制 / 进后台）的显隐，整体覆盖写
+  // 默认下载页按钮（骆驼壳 / 清和壳 / MyTV / 定制 / 进后台）的显隐，整体覆盖写
   buttons: '/api/dl/buttons',
 }
 

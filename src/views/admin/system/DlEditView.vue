@@ -5,16 +5,14 @@
 // 「关闭」= 删掉那个目录，nginx 自动回退默认下载页 —— 都不是重启，
 // 所以开关一改就能立刻在浏览器里看到效果（详见引擎 service/customDlService.go）。
 //
-// 六个占位符在渲染时被替换：{APK_URL}/{MYTV_URL}/{CUSTOM_URL} 是下载地址，
-// {APK_NAME}/{MYTV_NAME}/{CUSTOM_NAME} 是 APK 名称（不含版本号与类型后缀）。
+// 八个占位符在渲染时被替换：{APK_URL}/{APK_QH_URL}/{MYTV_URL}/{CUSTOM_URL} 是下载地址，
+// {APK_NAME}/{APK_QH_NAME}/{MYTV_NAME}/{CUSTOM_NAME} 是 APK 名称（不含版本号与类型后缀）。
 // 页面里的相对引用（src/href/url()）会被自动改写成 /dl/ 前缀，
 // 所以子目录里的资源放在本地相对位置即可，不用自己写 /dl/。
 //
 // **{APK_URL} / {APK_NAME} / show_camel 归「骆驼壳」**（= 主槽位，与设置页 tab
-// 顺序、下载页首个按钮三处一致）。清和壳那三个字段（apk_qh_*）已在
-// /api/site/index 下发，但本页的 dl/status 还没有把它们摊进来 ——
-// 等 dl/status 补上 names.apk_qh_url / apk_qh_name 与 buttons.show_qh 之后，
-// 这里再加一组 {APK_QH_URL} / {APK_QH_NAME} 与一行开关。
+// 顺序、下载页首个按钮三处一致）；**{APK_QH_URL} / {APK_QH_NAME} / show_qh 归清和壳**。
+// 名字刻意不新造 apk_lt_*：{APK_URL}/{APK_NAME} 是用户写死在自定义页源码里的对外契约。
 import { ref, computed, onMounted } from 'vue'
 import AppModal from '@/components/AppModal.vue'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -30,15 +28,15 @@ const active = ref(false)
 const count = ref(0)
 const licOk = ref(false)
 const names = ref({
-  apk_url: '', mytv_url: '', custom_url: '',
-  apk_name: '', mytv_name: '', custom_name: '',
+  apk_url: '', apk_qh_url: '', mytv_url: '', custom_url: '',
+  apk_name: '', apk_qh_name: '', mytv_name: '', custom_name: '',
 })
 
-/* ---- 默认下载页的四个按钮开关 ----
+/* ---- 默认下载页的按钮开关 ----
  * 存的是**配置里的开关值**，不是"最终会不会显示"——页面上的按钮还要 APK 文件存在
  * 才出得来，所以另外记一份产物状态（exists），把"为什么没显示"写在提示里。 */
-const buttons = ref({ show_camel: true, show_mytv: true, show_custom: true, show_admin: true })
-const exists = ref({ camel: false, mytv: false, custom: false })
+const buttons = ref({ show_camel: true, show_qh: true, show_mytv: true, show_custom: true, show_admin: true })
+const exists = ref({ camel: false, qh: false, mytv: false, custom: false })
 
 /* ---- 入口文件探测 ---- */
 // hasIndex 是「站点根有没有 index.html」—— 引擎的生效判据就是它（service/customDlService.go
@@ -88,22 +86,33 @@ const statusBadge = computed(() => {
 const placeholderRows = computed(() =>
   [
     { key: '{APK_URL}', desc: '骆驼壳客户端 APK 下载地址', value: names.value.apk_url },
+    { key: '{APK_QH_URL}', desc: '清和壳客户端 APK 下载地址', value: names.value.apk_qh_url },
     { key: '{MYTV_URL}', desc: 'MyTV 客户端 APK 下载地址', value: names.value.mytv_url },
     { key: '{CUSTOM_URL}', desc: '定制客户端 APK 下载地址', value: names.value.custom_url },
     { key: '{APK_NAME}', desc: '骆驼壳客户端名称', value: names.value.apk_name },
+    { key: '{APK_QH_NAME}', desc: '清和壳客户端名称', value: names.value.apk_qh_name },
     { key: '{MYTV_NAME}', desc: 'MyTV 客户端名称', value: names.value.mytv_name },
     { key: '{CUSTOM_NAME}', desc: '定制客户端名称', value: names.value.custom_name },
   ].map((r) => ({ ...r, tip: String(r.value ?? '').trim() || '当前未配置' }))
 )
 
-/** 「默认下载页按钮」的四行。hint 里带上"APK 编译出来没有"——
- *  文件不存在时按钮即使开着也不会显示，不说明的话看着就像开关失灵。 */
+/** 「默认下载页按钮」的各行。hint 里带上"APK 编译出来没有"——
+ *  文件不存在时按钮即使开着也不会显示，不说明的话看着就像开关失灵。
+ *  两个客户端壳各占一行：它们的产物是各自编译、各自发布的，
+ *  "骆驼壳编好了、清和壳还没编"是常态。 */
 const buttonRows = computed(() => [
   {
     key: 'show_camel',
     label: '骆驼壳客户端下载按钮',
     hint: exists.value.camel
       ? `已编译：${names.value.apk_name || '（名称未知）'}`
+      : '尚未编译出 APK —— 即使打开也不会显示',
+  },
+  {
+    key: 'show_qh',
+    label: '清和壳客户端下载按钮',
+    hint: exists.value.qh
+      ? `已编译：${names.value.apk_qh_name || '（名称未知）'}`
       : '尚未编译出 APK —— 即使打开也不会显示',
   },
   {
@@ -132,12 +141,14 @@ function applyButtons(b) {
   if (!b || typeof b !== 'object') return
   buttons.value = {
     show_camel: b.show_camel !== false,
+    show_qh: b.show_qh !== false,
     show_mytv: b.show_mytv !== false,
     show_custom: b.show_custom !== false,
     show_admin: b.show_admin !== false,
   }
   exists.value = {
     camel: Boolean(b.camel_exists),
+    qh: Boolean(b.qh_exists),
     mytv: Boolean(b.mytv_exists),
     custom: Boolean(b.custom_exists),
   }
@@ -234,7 +245,7 @@ async function onToggle(e) {
 
 /* ---- 默认下载页按钮开关 ---- */
 
-/** 服务端是**整体覆盖写**（四个字段必带），所以每次改动把当前四个值一起发过去。 */
+/** 服务端是**整体覆盖写**（五个字段必带），所以每次改动把当前五个值一起发过去。 */
 async function onToggleButton(key, e) {
   const next = e.target.checked
   const prev = { ...buttons.value }
@@ -244,6 +255,7 @@ async function onToggleButton(key, e) {
     DL_ROUTES.buttons,
     {
       show_camel: on(buttons.value.show_camel),
+      show_qh: on(buttons.value.show_qh),
       show_mytv: on(buttons.value.show_mytv),
       show_custom: on(buttons.value.show_custom),
       show_admin: on(buttons.value.show_admin),
