@@ -19,11 +19,20 @@ import AppSwitch from '@/components/AppSwitch.vue'
 const props = defineProps({
   shell: { type: String, default: 'lt' },
 })
-// 每个实例的 shell 固定，直接按它挑路由表（shared 字段 deleteIcon/decoder/... 两表一致）。
+// 每个实例的 shell 固定，直接按它挑路由表。
+// **注意 deleteIcon / deleteBj / uploadIcon / uploadBj 四件两表已不再相同** ——
+// 图标与背景是两个壳各自一套（清和壳 /config/images/{icon,bj}，骆驼壳
+// /config/images/lt/*），只有 decoder / buffTimeout / needAuthor / tipSet 这些
+// 全局配置还两表一致。
 const A = props.shell === 'lt' ? CLIENT_ROUTES_LT : CLIENT_ROUTES
 const dataUrl = props.shell === 'lt' ? API.adminClientLtData : API.adminClientData
 const buildStatusUrl = props.shell === 'lt' ? API.adminClientLtBuildStatus : API.adminClientBuildStatus
 const uploadBaseUrl = props.shell === 'lt' ? API.adminClientLtUploadBase : API.adminClientUploadBase
+// 图标 / 背景的对外 URL 前缀，必须与后端 until.ClientIconURLPrefix /
+// ClientBgURLPrefix 逐字一致：清和壳 /icon/ 与 /images/，骆驼壳 /lt/icon/ 与
+// /lt/images/。写错时后端上传是成功的，只是预览永远 404（静默）。
+const ICON_PREFIX = props.shell === 'lt' ? '/lt/icon/' : '/icon/'
+const BJ_PREFIX = props.shell === 'lt' ? '/lt/images/' : '/images/'
 
 const d = ref(null)
 const loading = ref(true)
@@ -163,12 +172,19 @@ function ensureBuildNo() {
 const previewBj = computed(() =>
   bjList.value.find((b) => b.name === previewBjName.value) || bjList.value[0] || null
 )
-/** 没上传图标时画的内置默认图标 —— 复制自 client/res/drawable-hdpi/icon.png */
+/** 没上传图标时画的内置默认图标 —— 两个壳的基底里**是同一张图**
+ *  （sha256 c2f8070…，iptv-apk-rebuilt/…/res/drawable/icon.png 与
+ *  client/res/drawable-hdpi/icon.png 逐字节相同），所以这一张够两壳用。 */
 const tvIconUrl = computed(() => iconUrl.value || '/static/images/icon.png')
 const previewBjUrl = computed(() => previewBj.value?.url || '')
-const tvScreenStyle = computed(() =>
-  previewBjUrl.value ? { backgroundImage: `url(${previewBjUrl.value})` } : {}
-)
+/** 没上传背景图时的兜底预览图 —— **按壳分**：清和壳是 qh_bg.png（星野图，与
+ *  iptv-apk-rebuilt/…/res/drawable/qh_bg.png 逐字节相同），骆驼壳是 ez_bg.png
+ *  （ez 壳的 windowBackground，取自 client/res/drawable-hdpi/ez_bg.png）。
+ *  共用一张的视觉效果是"骆驼壳那一页显示的是清和壳的启动图"，正好是这次要拆开的东西。 */
+const tvBgFallback = props.shell === 'lt' ? '/static/images/lt_bg.png' : '/static/images/qh_bg.png'
+const tvScreenStyle = computed(() => ({
+  backgroundImage: `url(${previewBjUrl.value || tvBgFallback})`,
+}))
 
 async function load() {
   loading.value = true
@@ -194,7 +210,7 @@ async function load() {
     newApkUrl.value = g.newApkUrl || ''
     newApkName.value = g.newApkName || ''
     iconUrl.value = g.iconUrl || ''
-    bjList.value = (g.bjUrl || []).map((n) => ({ name: n, url: `/images/${n}.png` }))
+    bjList.value = (g.bjUrl || []).map((n) => ({ name: n, url: `${BJ_PREFIX}${n}.png` }))
     decoder.value = Number(g.app?.decoder ?? 0)
     buffTimeout.value = Number(g.app?.buffTimeout ?? 5)
     needAuthor.value = Number(g.app?.needAuthor ?? 0)
@@ -245,8 +261,10 @@ function onUrlTap() {
 async function onIconPick(e) {
   const file = e.target.files?.[0]
   if (!file) return
-  const res = await submitUpload(API.adminClientUploadIcon, file, 'iconfile')
-  if (res?.code === 1) iconUrl.value = res.data?.url || '/icon/icon.png'
+  // 端点按壳取（A.uploadIcon）：用错的那个会把图存进**另一个壳**的目录，
+  // 而且响应同样是"上传成功"。
+  const res = await submitUpload(A.uploadIcon, file, 'iconfile')
+  if (res?.code === 1) iconUrl.value = res.data?.url || `${ICON_PREFIX}icon.png`
   if (iconInput.value) iconInput.value.value = ''
 }
 
@@ -260,9 +278,9 @@ async function removeIcon() {
 async function onBjPick(e) {
   const file = e.target.files?.[0]
   if (!file) return
-  const res = await submitUpload(API.adminClientUploadBj, file, 'bjfile')
+  const res = await submitUpload(A.uploadBj, file, 'bjfile')
   if (res?.code === 1 && res.data?.name) {
-    bjList.value.push({ name: res.data.name, url: `/images/${res.data.name}.png` })
+    bjList.value.push({ name: res.data.name, url: `${BJ_PREFIX}${res.data.name}.png` })
     // 新上传的立刻成为预览对象 —— 边传边看
     previewBjName.value = res.data.name
   }
@@ -496,6 +514,9 @@ async function saveTips() {
           <small class="ui-help">
             提示：图片仅支持PNG格式，不超过800KB；多张背景图在客户端随机显示，点缩略图可切换右侧预览。
             上传的图标与背景会在**编译时**打进安装包；没上传就用基包自带的默认图。
+            <br />
+            两个壳的图标与背景是**各自一套**：这里只改
+            {{ shell === 'lt' ? '骆驼壳' : '清和壳' }} 的图，另一个壳的包不受影响。
           </small>
 
           <!-- ============ 编译基底（底包）============ -->

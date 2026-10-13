@@ -22,9 +22,11 @@ import AdminTabs from '@/components/AdminTabs.vue'
 import ClientShellPanel from './ClientShellPanel.vue'
 
 // 顺序即标签顺序；第一项同时是"路径兜底"与默认选中项。
+// 图标与背景也是各自一套（清和壳 /config/images/{icon,bj}、骆驼壳
+// /config/images/lt/*），所以在哪个 tab 上传的图只会进哪个壳的包。
 const TABS = [
-  { key: 'qinghe', label: '清和壳', hint: 'Client.apk 那套基底：编译、待发布、发布与基底管理' },
-  { key: 'lt', label: '骆驼壳', hint: '独立基底 Client_lt.apk 那套，与清和壳各自独立编译' },
+  { key: 'qinghe', label: '清和壳', hint: 'Client.apk 那套基底：编译、待发布、发布、基底与图标背景' },
+  { key: 'lt', label: '骆驼壳', hint: '独立基底 Client_lt.apk 那套，编译与图标背景都与清和壳各自独立' },
 ]
 
 // 'qinghe' = 清和壳（默认）；'lt' = 骆驼壳。这里不落 URL，所以直接存一个 ref。

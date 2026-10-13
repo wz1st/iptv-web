@@ -47,8 +47,9 @@ export const API = {
   adminUpdata: '/api/updata/run',
 
   // ---- 文件上传（multipart/form-data，不参与 JSON 化）----
-  adminClientUploadIcon: '/api/client/uploadIcon',
-  adminClientUploadBj: '/api/client/uploadBj',
+  // 客户端图标 / 背景的上传**不在这一组**：这两个是**按壳分**的端点（清和壳
+  // /api/client/uploadIcon、骆驼壳 /api/client/lt/uploadIcon），见 CLIENT_ROUTES /
+  // CLIENT_ROUTES_LT 里的 uploadIcon / uploadBj。
   // 在线检查/升级编译基底（远端 mytv-vX.Y.Z 序列，走 until/ghnet.go 的直连+国内加速）
   adminClientMyTVCheckBase: '/api/clientMyTV/checkBase',
   adminClientMyTVUpgradeBase: '/api/clientMyTV/upgradeBase',
@@ -58,8 +59,10 @@ export const API = {
   adminClientUpgradeBase: '/api/client/upgradeBase',
   adminClientUploadBase: '/api/client/uploadBaseApk',
   // 骆驼壳（独立客户端基底，主槽位）：与 清和壳 同构，路径带 /lt。
-  // 图标 / 背景 / 解码 / 缓冲 / 授权 / 提示 / 公告是全局配置，仍走 /api/client/*；
-  // 只有 取数 / 编译状态 / 基底上传 这三件分壳。
+  // 图标 / 背景也是**分开的两套**（目录 /config/images/lt/*，URL 前缀 /lt/icon、
+  // /lt/images），所以上传走 adminClientLtUploadIcon / adminClientLtUploadBj ——
+  // 用清和壳那两个端点只会把图传到清和壳的目录里（后端不会报错，也不会生效）；
+  // 解码 / 缓冲 / 授权 / 提示 / 公告仍是全局配置，走 /api/client/*。
   adminClientLtData: '/api/client/lt/data',
   adminClientLtBuildStatus: '/api/client/lt/buildStatus',
   adminClientLtUploadBase: '/api/client/lt/uploadBaseApk',
@@ -155,6 +158,10 @@ export const EPG_FROM_ROUTES = {
 
 /** 清和客户端（/api/client）—— 开关与文案各一条路由 */
 export const CLIENT_ROUTES = {
+  // 上传 / 删除图标与背景：只动**清和壳**的素材目录（/config/images/{icon,bj}，
+  // URL 前缀 /icon、/images）。骆驼壳那一套在 CLIENT_ROUTES_LT 里，两边端点不同。
+  uploadIcon: '/api/client/uploadIcon',
+  uploadBj: '/api/client/uploadBj',
   deleteIcon: '/api/client/deleteIcon',
   deleteBj: '/api/client/deleteBj',
   decoder: '/api/client/decoder',
@@ -172,11 +179,14 @@ export const CLIENT_ROUTES = {
 }
 
 /** 骆驼壳（/api/client/lt）—— 与 清和壳 同构，只是路径带 /lt，且它是**主槽位**。
- *  图标/背景/解码/缓冲/授权/提示/公告是全局配置，仍走 /api/client/*；
- *  只有 编译 / 发布 / 基底 三件套分壳。 */
+ *  图标/背景也是**各自一套**（/config/images/lt/*，URL 前缀 /lt/icon、/lt/images），
+ *  所以上传/删除都走 /api/client/lt/*；解码/缓冲/授权/提示/公告仍是全局配置，
+ *  走 /api/client/*。 */
 export const CLIENT_ROUTES_LT = {
-  deleteIcon: '/api/client/deleteIcon',
-  deleteBj: '/api/client/deleteBj',
+  uploadIcon: '/api/client/lt/uploadIcon',
+  uploadBj: '/api/client/lt/uploadBj',
+  deleteIcon: '/api/client/lt/deleteIcon',
+  deleteBj: '/api/client/lt/deleteBj',
   decoder: '/api/client/decoder',
   buffTimeout: '/api/client/buffTimeout',
   needAuthor: '/api/client/needAuthor',
