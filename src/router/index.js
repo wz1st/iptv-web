@@ -67,7 +67,7 @@ const routes = [
       // 频道管理：默认 频道分组
       { path: 'channels', name: 'admin-channels', component: ChannelManage, meta: { title: '频道分组' } },
       { path: 'channelsSource', name: 'admin-channels-source', component: ChannelManage, meta: { title: '频道源设置' } },
-      // 客户端设置：一个标签（骆驼 + 系统公告）/ MyTV（受 isLic 控制）
+      // 客户端设置：一个标签（骆驼壳 + 清和壳 + 系统公告）/ MyTV（受 isLic 控制）
       // 公告已并入第一个标签（同一屏、上下堆叠），不再是独立标签。
       { path: 'client', name: 'admin-client', component: ClientSettings, meta: { title: '客户端设置' } },
       { path: 'clientMyTV', name: 'admin-client-mytv', component: ClientSettings, meta: { title: 'MyTV客户端设置' } },

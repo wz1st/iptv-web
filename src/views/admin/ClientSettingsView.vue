@@ -1,5 +1,5 @@
 <script setup>
-// 客户端设置 —— 一个标签里放下「骆驼客户端设置 + 系统公告」。
+// 客户端设置 —— 一个标签里放下「客户端设置（骆驼壳 / 清和壳双壳）+ 系统公告」。
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminTabs from '@/components/AdminTabs.vue'
@@ -60,8 +60,8 @@ function onChange(key) {
         <ClientPanel />
         <NoticePanel />
       </template>
-      <!-- MyTV 标签：与骆驼同一套「编译 → 待发布 → 发布」流程，
-           编译在引擎里执行，连接地址与 apk 均独立于骆驼。 -->
+      <!-- MyTV 标签：与客户端面板同一套「编译 → 待发布 → 发布」流程，
+           编译在引擎里执行，连接地址与 apk 均独立。 -->
       <ClientMyTVPanel v-else />
     </div>
   </div>

@@ -1,7 +1,7 @@
 <script setup>
 // 系统公告 —— 重构自 admin_notice.html。
 // 位置：客户端设置页**第一个标签**的最下面一张卡片（/admin/client）——
-// 与骆驼客户端设置同一屏、上下堆叠。公告的内容就是客户端启动时弹出的……
+// 与客户端设置同一屏、上下堆叠。公告的内容就是客户端启动时弹出的……
 import { ref, onMounted, computed } from 'vue'
 import { post } from '@/api/http'
 import { submitAction } from '@/utils/page'

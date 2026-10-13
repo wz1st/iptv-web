@@ -57,6 +57,14 @@ export const API = {
   adminClientCheckBase: '/api/client/checkBase',
   adminClientUpgradeBase: '/api/client/upgradeBase',
   adminClientUploadBase: '/api/client/uploadBaseApk',
+  // 骆驼壳（独立客户端基底，主槽位）：与 清和壳 同构，路径带 /lt。
+  // 图标 / 背景 / 解码 / 缓冲 / 授权 / 提示 / 公告是全局配置，仍走 /api/client/*；
+  // 只有 取数 / 编译状态 / 基底上传 这三件分壳。
+  adminClientLtData: '/api/client/lt/data',
+  adminClientLtBuildStatus: '/api/client/lt/buildStatus',
+  adminClientLtUploadBase: '/api/client/lt/uploadBaseApk',
+  adminClientLtCheckBase: '/api/client/lt/checkBase',
+  adminClientLtUpgradeBase: '/api/client/lt/upgradeBase',
   adminChannelsUploadPayList: '/api/channels/uploadPayList',
   adminEpgsUploadLogo: '/api/epgs/uploadLogo',
 }
@@ -145,7 +153,7 @@ export const EPG_FROM_ROUTES = {
   delete: '/api/epgFrom/delete',
 }
 
-/** 骆驼客户端（/api/client）—— 开关与文案各一条路由 */
+/** 清和客户端（/api/client）—— 开关与文案各一条路由 */
 export const CLIENT_ROUTES = {
   deleteIcon: '/api/client/deleteIcon',
   deleteBj: '/api/client/deleteBj',
@@ -163,6 +171,24 @@ export const CLIENT_ROUTES = {
   noticeSave: '/api/client/noticeSave',
 }
 
+/** 骆驼壳（/api/client/lt）—— 与 清和壳 同构，只是路径带 /lt，且它是**主槽位**。
+ *  图标/背景/解码/缓冲/授权/提示/公告是全局配置，仍走 /api/client/*；
+ *  只有 编译 / 发布 / 基底 三件套分壳。 */
+export const CLIENT_ROUTES_LT = {
+  deleteIcon: '/api/client/deleteIcon',
+  deleteBj: '/api/client/deleteBj',
+  decoder: '/api/client/decoder',
+  buffTimeout: '/api/client/buffTimeout',
+  needAuthor: '/api/client/needAuthor',
+  tipSet: '/api/client/tipSet',
+  noticeSave: '/api/client/noticeSave',
+  // 骆驼壳专属：编译 / 发布 / 在线检查升级基底
+  appInfo: '/api/client/lt/appInfo',
+  publish: '/api/client/lt/publish',
+  checkBase: '/api/client/lt/checkBase',
+  upgradeBase: '/api/client/lt/upgradeBase',
+}
+
 /** 进阶功能（授权引擎，/api/engine）—— 改造前叫 license */
 export const ENGINE_ROUTES = {
   proxy: '/api/engine/proxy',
@@ -178,7 +204,7 @@ export const ENGINE_ROUTES = {
   shortURL: '/api/engine/shortURL',
 }
 
-/** MyTV 客户端（/api/clientMyTV）—— 编译/发布与骆驼同一套三段语义 */
+/** MyTV 客户端（/api/clientMyTV）—— 编译/发布与清和壳同一套三段语义 */
 export const MYTV_ROUTES = {
   // 编译：只产待发布包（<MyTVName>-mytv-new.apk），线上包不动
   clientMyTV: '/api/clientMyTV/save',

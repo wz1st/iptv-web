@@ -7,6 +7,11 @@ const dto = ref({
   show_down: false,
   apk_url: '',
   apk_name: '',
+  // 清和壳：服务端并行提供两个壳，下载页要分别给按钮（字段见 dto.IndexDto）。
+  // 主槽位是骆驼壳，所以它占用 apk_* 这三个沿用下来的字段。
+  show_down_qh: false,
+  apk_qh_url: '',
+  apk_qh_name: '',
   show_down_mytv: false,
   mytv_url: '',
   mytv_name: '',
@@ -33,9 +38,17 @@ const img = {
       <img class="m__bg" :src="img.wrapperonemobilebg" alt="" />
       <div class="m__actions">
         <a v-if="dto.show_down" class="m__btn m__btn--primary" :href="dto.apk_url" :download="dto.apk_name">
-          {{ dto.apk_name }}（骆驼）
+          {{ dto.apk_name }}（骆驼壳）
         </a>
-        <a v-if="dto.show_down_mytv" class="m__btn m__btn--secondary" :href="dto.mytv_url" :download="dto.mytv_name">
+        <a
+          v-if="dto.show_down_qh"
+          class="m__btn m__btn--secondary"
+          :href="dto.apk_qh_url"
+          :download="dto.apk_qh_name"
+        >
+          {{ dto.apk_qh_name }}（清和壳）
+        </a>
+        <a v-if="dto.show_down_mytv" class="m__btn m__btn--mytv" :href="dto.mytv_url" :download="dto.mytv_name">
           {{ dto.mytv_name }}（MyTV）
         </a>
         <a class="m__btn m__btn--ghost" href="/admin">{{ siteName }}</a>
@@ -62,6 +75,9 @@ const img = {
 }
 .m__btn--primary { background: #2563eb; color: #fff; }
 .m__btn--secondary { background: #0891b2; color: #fff; }
+/* MyTV 原用 --secondary，那个位置现在给了清和壳 —— 相邻两个按钮同色会让
+   「我要下哪个客户端」失去区分度，所以单给一档绿色。 */
+.m__btn--mytv { background: #059669; color: #fff; }
 .m__btn--ghost { background: #fff; color: #2563eb; border: 1px solid #bfdbfe; }
 .m__pic img { width: 100%; display: block; }
 </style>
