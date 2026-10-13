@@ -6,6 +6,9 @@
 // 产物文件名也各自带壳标记（<应用名>-qh / <应用名>-lt），同名也不会互相覆盖。
 // 实际的编译/发布/基底管理逻辑都下放到 ClientShellPanel（按 shell 挑路由）。
 //
+// 标签条统一用 AdminTabs —— 与「设备管理」「EPG管理」等同款分段控件。
+// 不再自己写一套按钮式 ui-tab：同一个后台里两种标签外观，会被当成两种不同的东西。
+//
 // **默认展示清和壳** —— 安装完成后自动编的就是它（spaSiteApi.go 的 InstallData
 // 只 `go bootstrap.BuildAPK(false)`），也就是说用户第一次进这个页面时，
 // 只有清和壳那一栏有现成的包可发布/下载；默认落在骆驼壳会让页面一进来就是
@@ -15,47 +18,27 @@
 // （apk_url/apk_name/show_down）仍然归骆驼壳，清和壳用 `apk_qh_*`。
 // 那两个名字是用户在站点模板里写死的对外契约，不能因为这里的默认值而改。
 import { ref } from 'vue'
+import AdminTabs from '@/components/AdminTabs.vue'
 import ClientShellPanel from './ClientShellPanel.vue'
 
-const tab = ref('qinghe') // 'qinghe' = 清和壳（默认）；'lt' = 骆驼壳
+// 顺序即标签顺序；第一项同时是"路径兜底"与默认选中项。
+const TABS = [
+  { key: 'qinghe', label: '清和壳', hint: 'Client.apk 那套基底：编译、待发布、发布与基底管理' },
+  { key: 'lt', label: '骆驼壳', hint: '独立基底 Client_lt.apk 那套，与清和壳各自独立编译' },
+]
+
+// 'qinghe' = 清和壳（默认）；'lt' = 骆驼壳。这里不落 URL，所以直接存一个 ref。
+const tab = ref(TABS[0].key)
 </script>
 
 <template>
   <div>
-    <div class="ui-tabs">
-      <button class="ui-tab" :class="{ 'is-active': tab === 'qinghe' }" type="button" @click="tab = 'qinghe'">
-        清和壳
-      </button>
-      <button class="ui-tab" :class="{ 'is-active': tab === 'lt' }" type="button" @click="tab = 'lt'">
-        骆驼壳
-      </button>
-    </div>
+    <AdminTabs :tabs="TABS" :active="tab" @change="tab = $event" />
 
     <!-- 每个 tab 各自挂载一个 ClientShellPanel 实例：状态隔离，切回时重新取数 -->
-    <ClientShellPanel v-if="tab === 'qinghe'" shell="qinghe" />
-    <ClientShellPanel v-else shell="lt" />
+    <div class="ui-tabpanes">
+      <ClientShellPanel v-if="tab === 'qinghe'" shell="qinghe" />
+      <ClientShellPanel v-else shell="lt" />
+    </div>
   </div>
 </template>
-
-<style scoped>
-.ui-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-.ui-tab {
-  padding: 8px 18px;
-  border: 1px solid var(--c-border, #d0d5dd);
-  background: var(--c-card, #fff);
-  color: var(--c-text, #333);
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-}
-.ui-tab.is-active {
-  background: var(--primary, #2f6fed);
-  color: #fff;
-  border-color: var(--primary, #2f6fed);
-}
-</style>

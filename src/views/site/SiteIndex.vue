@@ -6,12 +6,16 @@ import { siteName } from '@/utils/site'
 const dto = ref({
   show_down: false,
   apk_url: '',
+  // apk_name = 存盘名（带壳标记，挂 :download）；apk_label = 按钮文案（不带壳标记）。
+  // 两者只差 `-qh` / `-lt` 一段：壳标记是给文件用的，不该出现在用户看得到的文案里。
   apk_name: '',
+  apk_label: '',
   // 清和壳：服务端并行提供两个壳，下载页要分别给按钮（字段见 dto.IndexDto）。
   // 主槽位是骆驼壳，所以它占用 apk_* 这三个沿用下来的字段。
   show_down_qh: false,
   apk_qh_url: '',
   apk_qh_name: '',
+  apk_qh_label: '',
   show_down_mytv: false,
   mytv_url: '',
   mytv_name: '',
@@ -72,7 +76,7 @@ const img = {
                 :href="dto.apk_url"
                 :download="dto.apk_name"
               >
-                {{ dto.apk_name }}（骆驼壳）
+                {{ dto.apk_label }}（骆驼壳）
               </a>
               <a
                 v-if="dto.show_down_qh"
@@ -80,7 +84,7 @@ const img = {
                 :href="dto.apk_qh_url"
                 :download="dto.apk_qh_name"
               >
-                {{ dto.apk_qh_name }}（清和壳）
+                {{ dto.apk_qh_label }}（清和壳）
               </a>
               <a
                 v-if="dto.show_down_mytv"
