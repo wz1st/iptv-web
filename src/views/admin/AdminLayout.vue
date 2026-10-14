@@ -55,12 +55,12 @@ const MENU_GROUPS = computed(() => [
     title: '客户端',
     items: [
       { key: 'users', label: '设备管理', icon: 'device', paths: ['/admin/users', '/admin/authors', '/admin/deliver'] },
-      // 客户端（骆驼壳 / 清和壳双壳 + 定制APK）、MyTV 并成一页；
-      // 「应用默认设置 / 应用提示 / 系统公告」已搬到设备管理 → 下发设置（/admin/deliver）。
-      // MyTV 是第二个标签（自身按 isLic 决定是否出现，判据在 ClientSettingsView）
-      { key: 'client', label: '客户端设置', icon: 'palette', paths: ['/admin/client', '/admin/clientMyTV'] },
-      // MyTV 是第二个标签（自身按 isLic 决定是否出现，判据在 ClientSettingsView）
-      { key: 'client', label: '客户端设置', icon: 'palette', paths: ['/admin/client', '/admin/clientMyTV'] },
+      // 客户端设置：**四个标签同一行**（骆驼壳 /admin/client、清和壳 /admin/clientQh、
+      // MyTV /admin/clientMyTV、定制APK /admin/clientCustom）。侧边栏用 paths 匹配高亮，
+      // ★漏掉任何一条 ⇒ 停在该页时菜单不亮（记忆红线：改标签条必同步这里）。
+      // MyTV 与定制APK 各自按授权显示（判据在 ClientSettingsView 的 isLic / isCustom）。
+      { key: 'client', label: '客户端设置', icon: 'palette',
+        paths: ['/admin/client', '/admin/clientQh', '/admin/clientMyTV', '/admin/clientCustom'] },
     ],
   },
   {

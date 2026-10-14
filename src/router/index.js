@@ -70,9 +70,20 @@ const routes = [
       // 频道管理：默认 频道分组
       { path: 'channels', name: 'admin-channels', component: ChannelManage, meta: { title: '频道分组' } },
       { path: 'channelsSource', name: 'admin-channels-source', component: ChannelManage, meta: { title: '频道源设置' } },
-      // 客户端设置：一个标签（清和 + 系统公告）/ MyTV（受 isLic 控制）
-      // 公告已并入第一个标签（同一屏、上下堆叠），不再是独立标签。
-      { path: 'client', name: 'admin-client', component: ClientSettings, meta: { title: '客户端设置' } },
+      // 客户端设置：清和壳 / 骆驼壳 / MyTV / 定制APK 四个标签**同一行**
+      // （2026-10-14：从两行并成一行）。
+      // 两个壳各自一条路由而不是组件内 ref —— ref 不落路由，
+      // 刷新页面会回到第一个标签（切到另一个壳后刷新就跳回第一个，很突兀），
+      // 而且标签条要参与"当前页高亮"，没有 path 没法和侧边栏对齐。
+      //
+      // ★路径名一律**按壳的本名**（client=骆驼壳 / clientQh=清和壳），
+      //   不要用 `clientLt` 指清和壳 —— 名字与行为不符时，后来者会照着
+      //   名字去找骆驼壳的逻辑，找到的却是清和壳的。
+      // ★custom 分支：骆驼壳占 /admin/client（主槽位，安装完自动编的就是它，
+      //   见 spaSiteApi.InstallData）；清和壳走 /admin/clientQh。
+      //   主线（main）反过来（client=清和壳）—— 两边刻意不同，改前先看清分支。
+      { path: 'client', name: 'admin-client', component: ClientSettings, meta: { title: '骆驼壳设置' } },
+      { path: 'clientQh', name: 'admin-client-qh', component: ClientSettings, meta: { title: '清和壳设置' } },
       { path: 'clientMyTV', name: 'admin-client-mytv', component: ClientSettings, meta: { title: 'MyTV客户端设置' } },
       // 定制APK（License.Type == 4）：标签条里 path 必须在这里有对应路由，
       // 否则点标签会落进未知路径兜底 → 被 redirect 到前台首页（看着像"跳去下载页"）。
