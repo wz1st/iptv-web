@@ -54,8 +54,11 @@ const MENU_GROUPS = computed(() => [
     key: 'client',
     title: '客户端',
     items: [
-      { key: 'users', label: '设备管理', icon: 'device', paths: ['/admin/users', '/admin/authors'] },
-      // 清和、MyTV 与系统公告并成一页：公告与清和同标签堆叠，
+      { key: 'users', label: '设备管理', icon: 'device', paths: ['/admin/users', '/admin/authors', '/admin/deliver'] },
+      // 客户端（骆驼壳 / 清和壳双壳 + 定制APK）、MyTV 并成一页；
+      // 「应用默认设置 / 应用提示 / 系统公告」已搬到设备管理 → 下发设置（/admin/deliver）。
+      // MyTV 是第二个标签（自身按 isLic 决定是否出现，判据在 ClientSettingsView）
+      { key: 'client', label: '客户端设置', icon: 'palette', paths: ['/admin/client', '/admin/clientMyTV'] },
       // MyTV 是第二个标签（自身按 isLic 决定是否出现，判据在 ClientSettingsView）
       { key: 'client', label: '客户端设置', icon: 'palette', paths: ['/admin/client', '/admin/clientMyTV'] },
     ],

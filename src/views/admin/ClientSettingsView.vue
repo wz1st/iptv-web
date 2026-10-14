@@ -1,12 +1,13 @@
 <script setup>
-// 客户端设置 —— 一个标签里放下「清和客户端设置 + 系统公告」。
+// 客户端设置 —— 骆驼壳 / 清和壳双壳 + 定制APK（custom 独有）+ MyTV。
+// 「应用默认设置 / 应用提示 / 系统公告」已搬到 设备管理 → 下发设置（/admin/deliver）。
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminTabs from '@/components/AdminTabs.vue'
 import ClientPanel from './client/ClientPanel.vue'
 import ClientMyTVPanel from './client/ClientMyTVPanel.vue'
 import ClientCustomPanel from './client/ClientCustomPanel.vue'
-import NoticePanel from './client/NoticePanel.vue'
+// 公告已搬到 设备管理 → 下发设置（/admin/deliver），这里不再import
 import { isLic, isCustom } from '@/utils/site'
 
 const route = useRoute()
@@ -18,7 +19,7 @@ const TABS = computed(() => {
       key: 'client',
       label: '客户端设置',
       path: '/admin/client',
-      hint: '应用信息、图标背景、默认设置、提示语与开机公告',
+      hint: 'APK 连接地址、应用名、图标背景、编译与发布、基底升级',
     },
   ]
   if (isLic.value) {
@@ -66,10 +67,12 @@ function onChange(key) {
     <!-- 面板用 v-if 切换而不是 KeepAlive：切走即卸载、切回重新取数。
          标签条隐藏时不要再留 16px 上边距（那是给标签条让位的）。 -->
     <div :class="{ 'ui-tabpanes': showTabs }">
-      <!-- 两个面板同属一个标签：各自取数、各自成卡，堆叠成一屏设置项 -->
+      <!-- 客户端标签只剩「编译配置」一块。
+           应用默认设置 / 应用提示 / 系统公告已搬到**设备管理 → 下发设置**
+           （/admin/deliver，见 DeliverSettingsPanel）—— 那三块是运行期
+           下发的配置，改完不必重新编译 APK，挤在编译表单旁容易让人误以为要重编。 -->
       <template v-if="active === 'client'">
         <ClientPanel />
-        <NoticePanel />
       </template>
       <!-- MyTV 标签：与清和同一套「编译 → 待发布 → 发布」流程，
            编译在引擎里执行，连接地址与 apk 均独立于清和。 -->
