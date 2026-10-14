@@ -20,7 +20,6 @@ import AdminTabs from '@/components/AdminTabs.vue'
 import ClientShellPanel from './ClientShellPanel.vue'
 
 // 顺序即标签顺序；第一项同时是"路径兜底"与默认选中项。
-// 顺序即标签顺序；第一项同时是"路径兜底"与默认选中项。
 // ★custom 的主槽位是**骆驼壳**（与下载页按钮顺序、{APK_URL} 归属三处一致），
 //   所以骆驼壳排在第一个并且默认选中 —— 这点与 main 相反，是定制分支的有意差异。
 // 图标与背景也是各自一套（清和壳 /config/images/{icon,bj}、骆驼壳
@@ -28,7 +27,6 @@ import ClientShellPanel from './ClientShellPanel.vue'
 const TABS = [
   { key: 'lt', label: '骆驼壳', hint: '独立基底 Client_lt.apk 那套：编译、待发布、发布、图标背景与基底管理' },
   { key: 'qinghe', label: '清和壳', hint: 'Client.apk 那套基底，与骆驼壳各自独立编译' },
-]
 ]
 
 // 这里不落 URL（不是路由级标签），所以直接存一个 ref。

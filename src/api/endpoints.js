@@ -203,6 +203,29 @@ export const CLIENT_ROUTES_LT = {
   upgradeBase: '/api/client/lt/upgradeBase',
 }
 
+/** 定制APK（定制授权专属，/api/clientCustom）—— 后端全在引擎里 */
+export const CUSTOM_ROUTES = {
+  // 编译：只产待发布包，线上包不动（校验与编译都在引擎里）
+  save: '/api/clientCustom/save',
+  // 发布：待发布包 rename 上位并落版本号
+  publish: '/api/clientCustom/publish',
+  // 上传定制编译基底 APK（multipart，字段名 apkfile）：**不检查包名**
+  uploadBaseApk: '/api/clientCustom/uploadBaseApk',
+}
+
+/** 只有定制授权才显示的「下载页编辑」（/api/dl）—— 后端全在引擎里 */
+export const DL_ROUTES = {
+  list: '/api/dl/list',
+  read: '/api/dl/read',
+  write: '/api/dl/write',
+  rename: '/api/dl/rename',
+  delete: '/api/dl/delete',
+  mkdir: '/api/dl/mkdir',
+  toggle: '/api/dl/toggle',
+  // 默认下载页四个按钮（骆驼 / MyTV / 定制 / 进后台）的显隐，整体覆盖写
+  buttons: '/api/dl/buttons',
+}
+
 /** 进阶功能（授权引擎，/api/engine）—— 改造前叫 license */
 export const ENGINE_ROUTES = {
   proxy: '/api/engine/proxy',
