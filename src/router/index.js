@@ -70,17 +70,28 @@ const routes = [
       // 频道管理：默认 频道分组
       { path: 'channels', name: 'admin-channels', component: ChannelManage, meta: { title: '频道分组' } },
       { path: 'channelsSource', name: 'admin-channels-source', component: ChannelManage, meta: { title: '频道源设置' } },
-      // 客户端设置：一个标签（骆驼壳 + 清和壳 + 系统公告）/ MyTV（受 isLic 控制）
-      // 公告已并入第一个标签（同一屏、上下堆叠），不再是独立标签。
-      { path: 'client', name: 'admin-client', component: ClientSettings, meta: { title: '客户端设置' } },
+      // 客户端设置：清和壳 / 骆驼壳 / MyTV / 定制APK 四个标签**同一行**
+      // （2026-10-14：从两行并成一行）。
+      // 两个壳各自一条路由而不是组件内 ref —— ref 不落路由，
+      // 刷新页面会回到第一个标签（切到另一个壳后刷新就跳回第一个，很突兀），
+      // 而且标签条要参与"当前页高亮"，没有 path 没法和侧边栏对齐。
+      //
+      // ★路径名一律**按壳的本名**（client=清和壳 / clientLt=骆驼壳），
+      //   名字与行为必须一致 —— 否则后来者照名字去找逻辑会找错分支。
+      // ★主线（main）：**清和壳占 /admin/client**（主槽位，安装完自动编的就是它），
+      //   骆驼壳走 /admin/clientLt。custom 分支反过来（那边骆驼壳优先）。
+      { path: 'client', name: 'admin-client', component: ClientSettings, meta: { title: '清和壳设置' } },
+      { path: 'clientLt', name: 'admin-client-lt', component: ClientSettings, meta: { title: '骆驼壳设置' } },
       { path: 'clientMyTV', name: 'admin-client-mytv', component: ClientSettings, meta: { title: 'MyTV客户端设置' } },
+      // 定制APK（License.Type == 4）：标签条里 path 必须在这里有对应路由，
+      // 否则点标签会落进未知路径兜底 → 被 redirect 到前台首页（看着像"跳去下载页"）。
+      { path: 'clientCustom', name: 'admin-client-custom', component: ClientSettings, meta: { title: '定制APK设置' } },
       // 管理员设置：公告搬去客户端设置后，这里只剩一个面板，不再需要标签页
       { path: 'admins', name: 'admin-admins', component: AdminsPanel, meta: { title: '管理员设置' } },
       // SSL 证书：证书/私钥落在 /config/cert，开关与端口落在 config.yml 的 ssl 段
       { path: 'ssl', name: 'admin-ssl', component: SslPanel, meta: { title: 'SSL 证书' } },
       // 进阶功能：授权引擎。改造前路径是 /admin/license，接口与二进制已改名 engine
       { path: 'engine', name: 'admin-engine', component: () => import('@/views/admin/EngineView.vue'), meta: { title: '进阶功能' } },
-      { path: 'updata', name: 'admin-updata', component: () => import('@/views/admin/UpdataView.vue'), meta: { title: '在线升级' } },
       { path: 'about', name: 'admin-about', component: () => import('@/views/admin/AboutView.vue'), meta: { title: '升级日志' } },
     ],
   },

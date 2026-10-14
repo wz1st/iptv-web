@@ -270,6 +270,14 @@ function normalizeUrlInput() {
   return base
 }
 
+// 「测试APK地址」：**只探测，不保存、不编译**（2026-10-14 按用户要求改）。
+//
+// 为什么不能顺手编译：编译是分钟级重活（解包改写 + apktool + 重签名），
+// 而"地址填错"是用户最常犯的错 —— 让他每填一次就等一次编译，
+// 既慢又把编译队列打满，而且地址对不对与能不能编译本来就是两件事
+// （地址可达但基底有问题，探测会过、编译仍会失败）。
+// 探测与编译分成两个按钮后，填地址阶段可以随手点几次，编译只在
+// 真正要出包时才点。
 async function testApkUrl() {
   if (testing.value) return
   const base = normalizeUrlInput()
@@ -277,16 +285,15 @@ async function testApkUrl() {
 
   testing.value = true
   try {
-    // 只测不存：testUrl 是独立端点，不写配置、不触发编译。
+    // testUrl 是独立端点：不写配置、不触发编译。
     const res = await post(A.testUrl, { serverUrl: base })
     if (res?.code >= 1) {
       const d0 = res.data || {}
       const extra = d0.probeUrl ? `（已按 ${d0.shell || '当前壳'} 规则测试 ${d0.probeUrl}）` : ''
       notify((res.msg || '连接正常') + extra, 'success', 4000)
-      // 测试这一步本身也把剥好的地址写回输入框 ——
+      // 把剥好的地址写回输入框（**只改输入框，不提交**）——
       // 用户接着点「编译」时提交的就是刚验证过的那个值。
       serverUrl.value = base
-      await buildApk()
     } else {
       notify(res?.msg || '连接测试失败', 'danger', 5000)
     }
@@ -503,7 +510,7 @@ onBeforeUnmount(stopPolling)
             <small class="ui-help">
               提示：只填站点地址，<strong>不要带路径</strong>（编译时自动补
               {{ props.shell === 'lt' ? '/apk/lt' : '/apk' }}）；
-              「测试APK地址」会先探测连接是否可达，通过后再编译。双击输入框解锁后可修改（触屏设备单击即可），解锁时自动填充当前后台地址；若内网访问，请手动填写外网地址。
+              「测试APK地址」只探测连接是否可达（按当前壳的规则打客户端那条登录路由），不会保存也不会编译；确认无误后再点「编译」。双击输入框解锁后可修改（触屏设备单击即可），解锁时自动填充当前后台地址；若内网访问，请手动填写外网地址。
             </small>
           </div>
 

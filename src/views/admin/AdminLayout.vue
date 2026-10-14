@@ -53,7 +53,11 @@ const MENU_GROUPS = [
       { key: 'users', label: '设备管理', icon: 'device', paths: ['/admin/users', '/admin/authors', '/admin/deliver'] },
       // 客户端（骆驼壳 / 清和壳双壳）、MyTV 与系统公告并成一页：公告与客户端同一标签堆叠，
       // MyTV 是第二个标签（自身按 isLic 决定是否出现，判据在 ClientSettingsView）
-      { key: 'client', label: '客户端设置', icon: 'palette', paths: ['/admin/client', '/admin/clientMyTV'] },
+      // 客户端设置：**三个标签同一行**（清和壳 /admin/client、骆驼壳 /admin/clientLt、
+      // MyTV /admin/clientMyTV）。侧边栏用 paths 匹配高亮，
+      // ★漏掉任何一条 ⇒ 停在该页时菜单不亮（记忆红线：改标签条必同步这里）。
+      { key: 'client', label: '客户端设置', icon: 'palette',
+        paths: ['/admin/client', '/admin/clientLt', '/admin/clientMyTV'] },
     ],
   },
   {
