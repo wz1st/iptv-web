@@ -168,6 +168,9 @@ export const CLIENT_ROUTES = {
   buffTimeout: '/api/client/buffTimeout',
   needAuthor: '/api/client/needAuthor',
   appInfo: '/api/client/appInfo',
+  // 「保存并测试」拆两步：这条只探测可达性，不落盘也不触发编译
+  // （编译是分钟级重活，每改一个字就编一次会把队列打满）。
+  testUrl: '/api/client/testUrl',
   // 发布：把待发布 apk 提升为线上版本（详见 service.PublishAPK）
   publish: '/api/client/publish',
   tipSet: '/api/client/tipSet',
@@ -194,6 +197,7 @@ export const CLIENT_ROUTES_LT = {
   noticeSave: '/api/client/noticeSave',
   // 骆驼壳专属：编译 / 发布 / 在线检查升级基底
   appInfo: '/api/client/lt/appInfo',
+  testUrl: '/api/client/lt/testUrl',
   publish: '/api/client/lt/publish',
   checkBase: '/api/client/lt/checkBase',
   upgradeBase: '/api/client/lt/upgradeBase',

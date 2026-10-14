@@ -64,6 +64,9 @@ const routes = [
       // 设备管理：默认 设备列表（菜单入口指向它）
       { path: 'users', name: 'admin-users', component: DeviceManage, meta: { title: '设备列表' } },
       { path: 'authors', name: 'admin-authors', component: DeviceManage, meta: { title: '设备授权' } },
+      // 下发设置：运行期下发的配置（解码/缓冲/授权、提示语、开机公告）。
+      // 从客户端设置页搬来 —— 改这些不必重新编译 APK，放编译表单旁容易误以为要重编。
+      { path: 'deliver', name: 'admin-deliver', component: DeviceManage, meta: { title: '下发设置' } },
       // 频道管理：默认 频道分组
       { path: 'channels', name: 'admin-channels', component: ChannelManage, meta: { title: '频道分组' } },
       { path: 'channelsSource', name: 'admin-channels-source', component: ChannelManage, meta: { title: '频道源设置' } },

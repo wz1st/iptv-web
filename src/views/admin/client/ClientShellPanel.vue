@@ -10,7 +10,6 @@ import { notify } from '@/utils/feedback'
 import { confirm } from '@/utils/confirm'
 import { isCoarsePointer } from '@/utils/touchTap'
 import { API, CLIENT_ROUTES, CLIENT_ROUTES_LT } from '@/api/endpoints'
-import AppSwitch from '@/components/AppSwitch.vue'
 
 // shell 决定走哪一套客户端：
 //   'lt'     骆驼壳 = 独立基底 Client_lt.apk 那套（/api/client/lt，**主槽位**，走 smali 注入地址）
@@ -70,20 +69,11 @@ const bjList = ref([])          // [{ name, url }]
 /** 右侧预览用哪张背景（点缩略图切换；留空时取第一张） */
 const previewBjName = ref('')
 
-/* ---- 应用默认设置 ---- */
-const decoder = ref(0)
-const buffTimeout = ref(5)
-const needAuthor = ref(0)
-
-/* ---- 应用提示 ---- */
-const tips = ref({ loading: '', userExpired: '', userForbidden: '', userNoReg: '' })
 
 const building = ref(false)
 let pollTimer = null
 const iconInput = ref(null)
 const bjInput = ref(null)
-
-const BUFF_OPTIONS = [5, 10, 15, 20, 25, 30]
 
 /** 线上包是否已产出：GetFileSize 取不到时回的是 "0 MB" */
 const hasCurrent = computed(() => Boolean(curSize.value) && curSize.value !== '0 MB')
@@ -211,15 +201,6 @@ async function load() {
     newApkName.value = g.newApkName || ''
     iconUrl.value = g.iconUrl || ''
     bjList.value = (g.bjUrl || []).map((n) => ({ name: n, url: `${BJ_PREFIX}${n}.png` }))
-    decoder.value = Number(g.app?.decoder ?? 0)
-    buffTimeout.value = Number(g.app?.buffTimeout ?? 5)
-    needAuthor.value = Number(g.app?.needAuthor ?? 0)
-    tips.value = {
-      loading: g.tips?.loading || '',
-      userExpired: g.tips?.userExpired || '',
-      userForbidden: g.tips?.userForbidden || '',
-      userNoReg: g.tips?.userNoReg || '',
-    }
     building.value = Number(g.status ?? 0) === 1
     if (building.value) startPolling()
 
@@ -255,6 +236,63 @@ async function unlockUrl() {
    顺手弹一个确认框是纯粹的干扰。 */
 function onUrlTap() {
   if (urlLocked.value && isCoarsePointer()) unlockUrl()
+}
+
+/* ---------------- 「测试APK地址」 ----------------
+ *
+ * 用户不再需要填 path：编译时由后端按壳自动补（清和 /apk、骆驼 /apk/lt），
+ * 存进 config.yml 的只有站点根。这里做两件事：
+ *   1) 输入框里若已经带了 path，**当场提示并剥掉** —— 不静默改写，
+ *      用户得知道自己填过什么、为什么地址"变了"。
+ *   2) 剥完先探一次可达性，通过了再交给 buildApk 保存并编译。
+ *
+ * 顺序不能反：先测后存。反过来的话，地址不可达也已经把配置写坏了，
+ * 而用户看到的是一个"保存成功但编译出来连不上"的包。
+ */
+
+/* 剥掉 scheme 之后的 path，返回 {base, path}；path 是空串表示没填。 */
+function splitUrlPath(raw) {
+  const s = (raw || '').trim().replace(/\/+$/, '')
+  const m = s.match(/^([a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^/?#]*)(.*)$/)
+  if (!m) return { base: s, path: '' }
+  return { base: m[1], path: m[2] || '' }
+}
+
+const testing = ref(false)
+
+/* 有 path 时提示"无需填写路径"，并把输入框改成裸地址。返回剥后的地址。 */
+function normalizeUrlInput() {
+  const { base, path } = splitUrlPath(serverUrl.value)
+  if (path) {
+    notify(`无需填写路径，已自动去掉「${path}」（编译时会自动补 /apk）`, 'warning', 4000)
+    serverUrl.value = base
+  }
+  return base
+}
+
+async function testApkUrl() {
+  if (testing.value) return
+  const base = normalizeUrlInput()
+  if (!base) { notify('请先填写APK连接地址', 'warning'); return }
+
+  testing.value = true
+  try {
+    // 只测不存：testUrl 是独立端点，不写配置、不触发编译。
+    const res = await post(A.testUrl, { serverUrl: base })
+    if (res?.code >= 1) {
+      const d0 = res.data || {}
+      const extra = d0.probeUrl ? `（已按 ${d0.shell || '当前壳'} 规则测试 ${d0.probeUrl}）` : ''
+      notify((res.msg || '连接正常') + extra, 'success', 4000)
+      // 测试这一步本身也把剥好的地址写回输入框 ——
+      // 用户接着点「编译」时提交的就是刚验证过的那个值。
+      serverUrl.value = base
+      await buildApk()
+    } else {
+      notify(res?.msg || '连接测试失败', 'danger', 5000)
+    }
+  } finally {
+    testing.value = false
+  }
 }
 
 /* ---------------- 图标上传 / 删除 ---------------- */
@@ -335,6 +373,10 @@ async function checkAndUpgradeBase() {
 async function buildApk() {
   if (!form.value.appName) { notify('应用名不能为空', 'warning'); return }
   if (!form.value.version) { notify('新版本号不能为空', 'warning'); return }
+  // 直接点「编译」时也可能带了 path（没走「测试APK地址」），
+  // 这里同样剥一次 —— 后端也会剥，两边都做是为了提示即时、不依赖后端。
+  if (!serverUrl.value.trim()) { notify('APK连接地址不能为空', 'warning'); return }
+  normalizeUrlInput()
   // 比编译号，不是比完整串 —— form.version 存的是纯编译号（002），
   // currentVersion 是完整版本号（1.0.0.002），拿它们直接比永不相等，
   // 校验会形同虚设。
@@ -417,29 +459,8 @@ function stopPolling() {
 onBeforeUnmount(stopPolling)
 
 /* ---------------- 默认设置（onchange 即提交）---------------- */
-async function onDecoderChange() {
-  await submitAction(A.decoder, { decoder: Number(decoder.value) || 0 })
-}
-async function onBuffChange() {
-  await submitAction(A.buffTimeout, { buffTimeout: Number(buffTimeout.value) || 0 })
-}
-async function onNeedAuthorChange() {
-  await submitAction(A.needAuthor, { needAuthor: Number(needAuthor.value) || 0 })
-}
 
 /* ---------------- 应用提示 ---------------- */
-async function saveTips() {
-  await submitAction(
-    A.tipSet,
-    {
-      loading: tips.value.loading,
-      userExpired: tips.value.userExpired,
-      userForbidden: tips.value.userForbidden,
-      userNoReg: tips.value.userNoReg,
-    },
-    { reload: load }
-  )
-}
 </script>
 
 <template>
@@ -453,21 +474,37 @@ async function saveTips() {
       <div class="ui-card__header"><h4>编译配置</h4></div>
       <div class="ui-card__body tv-split">
         <div class="tv-split__form">
-          <!-- APK 连接地址：双击输入框解锁后可改 -->
+          <!-- APK 连接地址：双击输入框解锁后可改。
+               path 不用填 —— 编译时后端按壳自动补（清和 /apk、骆驼 /apk/lt），
+               填了反而会被剥掉并提示。 -->
           <div class="ui-field">
             <label class="ui-field__label">APK连接地址</label>
-            <input
-              v-model="serverUrl"
-              class="ui-input"
-              :class="{ 'is-unlocked': !urlLocked }"
-              type="text"
-              placeholder="APK连接地址"
-              :readonly="urlLocked"
-              :title="urlLocked ? '双击（触屏单击）可解锁修改' : '已解锁，可修改'"
-              @dblclick="unlockUrl"
-              @click="onUrlTap"
-            />
-            <small class="ui-help">提示：双击输入框解锁后可修改（触屏设备单击即可），解锁时自动填充当前后台地址；若内网访问，请手动填写外网地址。</small>
+            <div class="ui-inline">
+              <input
+                v-model="serverUrl"
+                class="ui-input"
+                :class="{ 'is-unlocked': !urlLocked }"
+                type="text"
+                placeholder="如 http://10.10.220.162:18160（不要带路径）"
+                style="flex: 1; min-width: 200px"
+                :readonly="urlLocked"
+                :title="urlLocked ? '双击（触屏单击）可解锁修改' : '已解锁，可修改'"
+                @dblclick="unlockUrl"
+                @click="onUrlTap"
+              />
+              <button
+                class="ui-btn ui-btn--primary"
+                type="button"
+                style="margin: 0"
+                :disabled="testing"
+                @click="testApkUrl"
+              >{{ testing ? '测试中…' : '测试APK地址' }}</button>
+            </div>
+            <small class="ui-help">
+              提示：只填站点地址，<strong>不要带路径</strong>（编译时自动补
+              {{ props.shell === 'lt' ? '/apk/lt' : '/apk' }}）；
+              「测试APK地址」会先探测连接是否可达，通过后再编译。双击输入框解锁后可修改（触屏设备单击即可），解锁时自动填充当前后台地址；若内网访问，请手动填写外网地址。
+            </small>
           </div>
 
           <!-- 应用名 / 图标 / 背景同一行：这三件都是"客户端长什么样"，
@@ -637,59 +674,7 @@ async function saveTips() {
       </div>
     </div>
 
-    <!-- ============ 应用默认设置 ============ -->
-    <div class="ui-card">
-      <div class="ui-card__header"><h4>应用默认设置</h4></div>
-      <div class="ui-card__body">
-        <div class="ui-inline">
-          <div class="ui-field" style="flex: none">
-            <label class="ui-field__label">解码模式</label>
-            <select v-model.number="decoder" class="ui-select" style="width: 150px" @change="onDecoderChange">
-              <option :value="0">自动选择</option>
-              <option :value="1">硬件解码</option>
-              <option :value="2">软件解码</option>
-            </select>
-          </div>
-
-          <div class="ui-field" style="flex: none">
-            <label class="ui-field__label">超时跳转时长</label>
-            <select v-model.number="buffTimeout" class="ui-select" style="width: 130px" @change="onBuffChange">
-              <option v-for="s in BUFF_OPTIONS" :key="s" :value="s">{{ s }} 秒</option>
-            </select>
-          </div>
-
-          <div class="ui-field" style="flex: none">
-            <label class="ui-field__label">客户端授权</label>
-            <AppSwitch v-model="needAuthor" @change="onNeedAuthorChange" />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ============ 应用提示 ============ -->
-    <div class="ui-card">
-      <div class="ui-card__header"><h4>应用提示</h4></div>
-      <div class="ui-card__body">
-        <div class="ui-field">
-          <label class="ui-field__label">节目加载提示</label>
-          <input v-model="tips.loading" class="ui-input" type="text" />
-        </div>
-        <div class="ui-field">
-          <label class="ui-field__label">授权到期提示</label>
-          <input v-model="tips.userExpired" class="ui-input" type="text" />
-        </div>
-        <div class="ui-field">
-          <label class="ui-field__label">账号停用提示</label>
-          <input v-model="tips.userForbidden" class="ui-input" type="text" />
-        </div>
-        <div class="ui-field">
-          <label class="ui-field__label">未予授权提示</label>
-          <input v-model="tips.userNoReg" class="ui-input" type="text" />
-        </div>
-        <button class="ui-btn ui-btn--primary" type="button" @click="saveTips">保存</button>
-      </div>
-    </div>
-  </template>
+      </template>
 </template>
 
 <style scoped>
