@@ -39,10 +39,8 @@ export const API = {
   adminClientBuildStatus: '/api/client/buildStatus',
   adminClientMyTVBuildStatus: '/api/clientMyTV/buildStatus',
   adminUpdataCheckWeb: '/api/updata/checkWeb',
-  adminUpdataCheckFront: '/api/updata/checkFront',
   adminUpdataCheckEngine: '/api/updata/checkEngine',
   adminUpdataDownWeb: '/api/updata/downWeb',
-  adminUpdataDownFront: '/api/updata/downFront',
   adminUpdataDownEngine: '/api/updata/downEngine',
   adminUpdata: '/api/updata/run',
 

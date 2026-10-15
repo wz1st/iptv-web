@@ -8,8 +8,7 @@
 //
 // ★ 接口**共用**，不按壳分：这三个字段存在同一份 config.yml 里
 // （cfg.App.Decoder / BuffTimeout / NeedAuthor、cfg.Tips.*、公告），
-// 两个壳读的是同一份。所以页内给"清和壳 / 骆驼壳"两个子 tab 只是为了
-// 对照方便 —— 改哪个子 tab，存的都是同一份配置。
+// 两个壳读的是同一份 —— 所以本页**没有**壳切换 tab，改哪个壳都是这份配置。
 // （路径分壳的是**编译**：图标背景、基底、版本文件那些，见 ClientShellPanel。）
 //
 // 公告**不重写**：直接挂载现成的 NoticePanel（它有 adText/showTime/showInterval
@@ -17,23 +16,13 @@
 import { ref, onMounted } from 'vue'
 import { post } from '@/api/http'
 import { notify } from '@/utils/feedback'
-import AdminTabs from '@/components/AdminTabs.vue'
 import AppSwitch from '@/components/AppSwitch.vue'
 import NoticePanel from '@/views/admin/client/NoticePanel.vue'
-import { CLIENT_ROUTES, CLIENT_ROUTES_LT } from '@/api/endpoints'
+import { API, CLIENT_ROUTES } from '@/api/endpoints'
 
-// 与客户端设置页同一套路由表：提示语与公告是全局配置，两表指向同一个端点，
-// 这里按 shell 取表只是为了将来万一要分壳时不用改调用处。
-const props = defineProps({
-  shell: { type: String, default: 'lt' },
-})
-const A = props.shell === 'lt' ? CLIENT_ROUTES_LT : CLIENT_ROUTES
-
-const TABS = [
-  { key: 'qinghe', label: '清和壳', hint: '解码、缓冲、授权、提示语与开机公告' },
-  { key: 'lt', label: '骆驼壳', hint: '与清和壳共用同一份下发配置' },
-]
-const tab = ref(TABS[0].key)
+// 提示语与公告是全局配置：CLIENT_ROUTES 与 CLIENT_ROUTES_LT 里
+// decoder/buffTimeout/needAuthor/tipSet 指向同一批端点，任取一张表即可。
+const A = CLIENT_ROUTES
 
 /* 与客户端设置页一致的两档缓冲时长白名单：数值越大缓冲越久、起播越慢，
    不适合任意填。后端 DecoderSelect / SetBuffTimeOut 也各自校验一次。 */
@@ -52,13 +41,18 @@ const tips = ref({
 
 /* POST /api/client/data 一次给全；tipSet / decoder / buffTimeout / needAuthor
    各自一条路由，与编译那边同构。 */
-const dataUrl = props.shell === 'lt' ? '/api/client/lt/data' : '/api/client/data'
+const dataUrl = API.adminClientData
 
 async function load() {
   loading.value = true
   try {
     const res = await post(dataUrl, {})
-    const g = res?.data || {}
+    // ★ /api/client/data 由 Go 侧 c.JSON(200, dto) 直接返回 DTO 本体
+    // （loginUser/build/app/tips 都在顶层，没有 {code,msg,data} 外壳）。
+    // 过去这里写 res?.data，恒为空对象 ⇒ 三项开关与四条提示语全部回落
+    // 默认值，页面看着"有值"其实是初始值。动作端点是 reply() 包装的，
+    // 那个才有 res.code / res.data，两者形状不同，别混。
+    const g = res || {}
     const app = g.app || {}
     decoder.value = Number(app.decoder ?? 0)
     buffTimeout.value = Number(app.buffTimeout ?? 10)
@@ -110,76 +104,70 @@ onMounted(load)
 
 <template>
   <div>
-    <!-- 页内子 tab：对照用。配置本身两壳共用（见文件头注释） -->
-    <AdminTabs :tabs="TABS" :active="tab" @change="tab = $event" />
+    <!-- 无壳切换 tab：解码/缓冲/授权/提示语/公告两壳共用同一份配置（见文件头注释） -->
+    <div v-if="loading" class="ui-card"><div class="ui-card__body">读取中…</div></div>
 
-    <div class="ui-tabpanes">
-      <!-- 数据只取一次：两壳共用同一份配置，切换子 tab 时不重新请求，
-           免得切一下就闪一次 loading。 -->
-      <div v-if="loading" class="ui-card"><div class="ui-card__body">读取中…</div></div>
-
-      <template v-else>
-        <!-- ============ 应用默认设置 ============ -->
-        <div class="ui-card">
-          <div class="ui-card__header"><h4>应用默认设置</h4></div>
-          <div class="ui-card__body">
-            <div class="ui-inline">
-              <div class="ui-field" style="flex: none">
-                <label class="ui-field__label">解码模式</label>
-                <select v-model.number="decoder" class="ui-select" style="width: 150px" @change="onDecoderChange">
-                  <option :value="0">自动选择</option>
-                  <option :value="1">硬件解码</option>
-                  <option :value="2">软件解码</option>
-                </select>
-              </div>
-
-              <div class="ui-field" style="flex: none">
-                <label class="ui-field__label">超时跳转时长</label>
-                <select v-model.number="buffTimeout" class="ui-select" style="width: 130px" @change="onBuffChange">
-                  <option v-for="s in BUFF_OPTIONS" :key="s" :value="s">{{ s }} 秒</option>
-                </select>
-              </div>
-
-              <div class="ui-field" style="flex: none">
-                <label class="ui-field__label">客户端授权</label>
-                <AppSwitch v-model="needAuthor" @change="onNeedAuthorChange" />
-              </div>
+    <template v-else>
+      <!-- ============ 应用默认设置 ============ -->
+      <div class="ui-card">
+        <div class="ui-card__header"><h4>应用默认设置</h4></div>
+        <div class="ui-card__body">
+          <div class="ui-inline">
+            <div class="ui-field" style="flex: none">
+              <label class="ui-field__label">解码模式</label>
+              <select v-model.number="decoder" class="ui-select" style="width: 150px" @change="onDecoderChange">
+                <option :value="0">自动选择</option>
+                <option :value="1">硬件解码</option>
+                <option :value="2">软件解码</option>
+              </select>
             </div>
-            <small class="ui-help">
-              三项改完立即生效，<strong>不需要重新编译 APK</strong>；清和壳与骆驼壳共用同一份配置。
-            </small>
+
+            <div class="ui-field" style="flex: none">
+              <label class="ui-field__label">超时跳转时长</label>
+              <select v-model.number="buffTimeout" class="ui-select" style="width: 130px" @change="onBuffChange">
+                <option v-for="s in BUFF_OPTIONS" :key="s" :value="s">{{ s }} 秒</option>
+              </select>
+            </div>
+
+            <div class="ui-field" style="flex: none">
+              <label class="ui-field__label">客户端授权</label>
+              <AppSwitch v-model="needAuthor" @change="onNeedAuthorChange" />
+            </div>
           </div>
+          <small class="ui-help">
+            三项改完立即生效，<strong>不需要重新编译 APK</strong>；清和壳与骆驼壳共用同一份配置。
+          </small>
         </div>
+      </div>
 
-        <!-- ============ 应用提示 ============ -->
-        <div class="ui-card">
-          <div class="ui-card__header"><h4>应用提示</h4></div>
-          <div class="ui-card__body">
-            <div class="ui-field">
-              <label class="ui-field__label">节目加载提示</label>
-              <input v-model="tips.loading" class="ui-input" type="text" />
-            </div>
-            <div class="ui-field">
-              <label class="ui-field__label">授权到期提示</label>
-              <input v-model="tips.userExpired" class="ui-input" type="text" />
-            </div>
-            <div class="ui-field">
-              <label class="ui-field__label">账号停用提示</label>
-              <input v-model="tips.userForbidden" class="ui-input" type="text" />
-            </div>
-            <div class="ui-field">
-              <label class="ui-field__label">未予授权提示</label>
-              <input v-model="tips.userNoReg" class="ui-input" type="text" />
-            </div>
-            <button class="ui-btn ui-btn--primary" type="button" @click="saveTips">保存</button>
+      <!-- ============ 应用提示 ============ -->
+      <div class="ui-card">
+        <div class="ui-card__header"><h4>应用提示</h4></div>
+        <div class="ui-card__body">
+          <div class="ui-field">
+            <label class="ui-field__label">节目加载提示</label>
+            <input v-model="tips.loading" class="ui-input" type="text" />
           </div>
+          <div class="ui-field">
+            <label class="ui-field__label">授权到期提示</label>
+            <input v-model="tips.userExpired" class="ui-input" type="text" />
+          </div>
+          <div class="ui-field">
+            <label class="ui-field__label">账号停用提示</label>
+            <input v-model="tips.userForbidden" class="ui-input" type="text" />
+          </div>
+          <div class="ui-field">
+            <label class="ui-field__label">未予授权提示</label>
+            <input v-model="tips.userNoReg" class="ui-input" type="text" />
+          </div>
+          <button class="ui-btn ui-btn--primary" type="button" @click="saveTips">保存</button>
         </div>
+      </div>
 
-        <!-- ============ 系统公告 ============
-             复用现成的 NoticePanel（三个字段 + 独立取数端点都在那边），
-             不在这里重写一份 —— 重写必然漏字段。 -->
-        <NoticePanel />
-      </template>
-    </div>
+      <!-- ============ 系统公告 ============
+           复用现成的 NoticePanel（三个字段 + 独立取数端点都在那边），
+           不在这里重写一份 —— 重写必然漏字段。 -->
+    <NoticePanel />
+    </template>
   </div>
 </template>
