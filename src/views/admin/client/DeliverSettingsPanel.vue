@@ -58,7 +58,12 @@ async function load() {
   loading.value = true
   try {
     const res = await post(dataUrl, {})
-    const g = res?.data || {}
+    // ★ /api/client/data 由 Go 侧 c.JSON(200, dto) 直接返回 DTO 本体
+    // （loginUser/build/app/tips 都在顶层，没有 {code,msg,data} 外壳）。
+    // 过去这里写 res?.data，恒为空对象 ⇒ 三项开关与四条提示语全部回落
+    // 默认值，页面看着"有值"其实是初始值。动作端点是 reply() 包装的，
+    // 那个才有 res.code / res.data，两者形状不同，别混。
+    const g = res || {}
     const app = g.app || {}
     decoder.value = Number(app.decoder ?? 0)
     buffTimeout.value = Number(app.buffTimeout ?? 10)

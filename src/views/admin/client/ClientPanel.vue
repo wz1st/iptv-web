@@ -1,8 +1,9 @@
 <script setup>
 // 客户端设置 —— 双壳 tab 容器：
-//   骆驼壳 = client/smali 树编出来的那套（/api/client/lt，主槽位，基底 client/Client_lt.apk）
 //   清和壳 = Client.apk 那套（/api/client，基底 client/Client.apk）
-// 两个壳共用同一套编译接口（BuildClientApk），只是基底、版本文件、下载地址各自独立。
+//   骆驼壳 = 独立基底 Client_lt.apk 那套（/api/client/lt）
+// 两个壳共用同一套编译接口（BuildClientApk），只是基底、版本文件、下载地址各自独立；
+// 产物文件名也各自带壳标记（<应用名>-qh / <应用名>-lt），同名也不会互相覆盖。
 // 实际的编译/发布/基底管理逻辑都下放到 ClientShellPanel（按 shell 挑路由）。
 //
 // 标签条统一用 AdminTabs —— 与「设备管理」「EPG管理」等同款分段控件。
