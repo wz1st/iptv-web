@@ -270,14 +270,12 @@ function normalizeUrlInput() {
   return base
 }
 
-// 「测试APK地址」：**只探测，不保存、不编译**（2026-10-14 按用户要求改）。
-//
-// 为什么不能顺手编译：编译是分钟级重活（解包改写 + apktool + 重签名），
-// 而"地址填错"是用户最常犯的错 —— 让他每填一次就等一次编译，
-// 既慢又把编译队列打满，而且地址对不对与能不能编译本来就是两件事
-// （地址可达但基底有问题，探测会过、编译仍会失败）。
-// 探测与编译分成两个按钮后，填地址阶段可以随手点几次，编译只在
-// 真正要出包时才点。
+// 「测试APK地址」：探测可达性，并按结果**落盘**（不触发编译）。
+//   - 成功：提示正常，并立即把地址写进 config.yml（刷新不丢、下次编译即用）。
+//   - 失败且是「IPv6 假阴性」（地址是 IPv6 或域名解析到 IPv6，但后台探测容器没 IPv6）：
+//     弹窗询问是否强制保存，确认则落盘（客户端设备可能有 IPv6 能连）。
+//   - 其它失败：仅提示，不落盘。
+// 落盘走独立的 saveUrl 端点，与 appInfo（落盘+编译）分开 —— 避免每测一次就触发分钟级编译。
 async function testApkUrl() {
   if (testing.value) return
   const base = normalizeUrlInput()
@@ -291,15 +289,34 @@ async function testApkUrl() {
       const d0 = res.data || {}
       const extra = d0.probeUrl ? `（已按 ${d0.shell || '当前壳'} 规则测试 ${d0.probeUrl}）` : ''
       notify((res.msg || '连接正常') + extra, 'success', 4000)
-      // 把剥好的地址写回输入框（**只改输入框，不提交**）——
-      // 用户接着点「编译」时提交的就是刚验证过的那个值。
+      // 把剥好的地址写回输入框，并立即落盘（用户接着点「编译」时提交的就是它）。
       serverUrl.value = base
+      await saveServerUrl()
+    } else if (res?.data?.ipv6 || res?.type === 'ipv6') {
+      // IPv6 假阴性：给「强制保存」出口，因为客户端设备（有 IPv6）可能能连。
+      const ok = await confirm(
+        '当前因地址为ipv6导致测试失败可能无法连接，是否强制保存？',
+        { okText: '强制保存', okVariant: 'warning' }
+      )
+      if (ok) {
+        serverUrl.value = base
+        await saveServerUrl()
+        notify('已强制保存该地址（未通过连通性测试，客户端可能有 IPv6 可连）', 'warning', 5000)
+      } else {
+        notify(res?.msg || 'IPv6 地址连通性测试失败', 'danger', 5000)
+      }
     } else {
       notify(res?.msg || '连接测试失败', 'danger', 5000)
     }
   } finally {
     testing.value = false
   }
+}
+
+/* 把当前 APK连接地址落到 config.yml（只落盘，不触发编译）。 */
+async function saveServerUrl() {
+  const res = await post(A.saveUrl, { serverUrl: serverUrl.value })
+  if (res?.code !== 1) notify(res?.msg || '地址保存失败', 'danger', 3000)
 }
 
 /* ---------------- 图标上传 / 删除 ---------------- */
@@ -510,7 +527,8 @@ onBeforeUnmount(stopPolling)
             <small class="ui-help">
               提示：只填站点地址，<strong>不要带路径</strong>（编译时自动补
               {{ props.shell === 'lt' ? '/apk/lt' : '/apk' }}）；
-              「测试APK地址」只探测连接是否可达（按当前壳的规则打客户端那条登录路由），不会保存也不会编译；确认无误后再点「编译」。双击输入框解锁后可修改（触屏设备单击即可），解锁时自动填充当前后台地址；若内网访问，请手动填写外网地址。
+              「测试APK地址」探测连接是否可达（按当前壳的规则打客户端那条登录路由）：<strong>测试通过会立即保存地址</strong>；
+              若地址为 IPv6 而服务器容器无 IPv6 导致测试失败，会提示是否「强制保存」。确认无误后再点「编译」正式出包。双击输入框解锁后可修改（触屏设备单击即可），解锁时自动填充当前后台地址；若内网访问，请手动填写外网地址。
             </small>
           </div>
 
