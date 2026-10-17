@@ -29,6 +29,8 @@ export const API = {
   adminAdminsData: '/api/admins/data',
   adminUpdataData: '/api/updata/data',
   adminAboutData: '/api/about/data',
+  adminGuideData: '/api/guide/data',
+  adminGuideAck: '/api/guide/ack',
   adminEngineData: '/api/engine/data',
   // SSL 证书（系统菜单）：证书信息、开关、nginx 版本、文件路径
   adminSslData: '/api/ssl/data',

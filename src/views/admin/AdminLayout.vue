@@ -21,7 +21,7 @@ import {
 import NavMenuButton from '@/components/admin/NavMenuButton.vue'
 import NavLink from '@/components/admin/NavLink.vue'
 import { Sun, Moon, LogOut, Download } from 'lucide-vue-next'
-import { siteName, version } from '@/utils/site'
+import { siteName, version, guideAck } from '@/utils/site'
 import { API } from '@/api/endpoints'
 import { confirm } from '@/utils/confirm'
 import { clearLicenseNoticeSeen } from '@/utils/licenseNotice'
@@ -68,6 +68,7 @@ const MENU_GROUPS = [
       { key: 'admins', label: '管理员设置', icon: 'user', paths: ['/admin/admins'] },
       // HTTPS：上传/粘贴证书、开关 443 与 80 强制跳转、查看证书信息
       { key: 'ssl', label: 'SSL 证书', icon: 'shield', paths: ['/admin/ssl'] },
+      { key: 'guide', label: '使用说明', icon: 'clipboard', paths: ['/admin/guide'] },
       { key: 'updata', label: '在线升级', icon: 'refresh', paths: ['/admin/updata'] },
     ],
   },
@@ -151,7 +152,7 @@ async function logout() {
 
     <SidebarProvider class="min-h-0 flex-1">
       <!-- top-14 = 顶栏高度：侧栏从顶栏下面开始，不从视口顶端开始 -->
-      <Sidebar collapsible="offcanvas" class="top-14 h-[calc(100dvh-3.5rem)]">
+      <Sidebar v-show="guideAck" collapsible="offcanvas" class="top-14 h-[calc(100dvh-3.5rem)]">
         <SidebarContent class="gap-0 px-2 py-3">
           <SidebarGroup v-for="group in MENU_GROUPS" :key="group.key" class="px-0 py-1">
             <SidebarGroupLabel v-if="group.title">{{ group.title }}</SidebarGroupLabel>

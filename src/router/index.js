@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { installed } from '@/utils/site'
+import { installed, guideAck } from '@/utils/site'
 
 // 前端路由表 —— 与后端 router/apiRouter.go 的接口表互不重叠：
 
@@ -93,6 +93,10 @@ const routes = [
       // 进阶功能：授权引擎。改造前路径是 /admin/license，接口与二进制已改名 engine
       { path: 'engine', name: 'admin-engine', component: () => import('@/views/admin/EngineView.vue'), meta: { title: '进阶功能' } },
       { path: 'about', name: 'admin-about', component: () => import('@/views/admin/AboutView.vue'), meta: { title: '升级日志' } },
+      // 使用说明：首次进入的引导页。未确认时由路由守卫锁定在此页，禁止进入其它后台页。
+      { path: 'guide', name: 'admin-guide', component: () => import('@/views/admin/GuideView.vue'), meta: { title: '使用说明' } },
+      // 在线升级：管理系统 / 前端整包 / 引擎三条链路。
+      { path: 'updata', name: 'admin-updata', component: () => import('@/views/admin/UpdataView.vue'), meta: { title: '在线升级' } },
     ],
   },
 
@@ -118,6 +122,11 @@ router.beforeEach((to) => {
   }
 
   if (isWizard) return '/'
+
+  // 使用说明未确认：锁定在引导页，禁止进入其它后台页（登录页与引导页本身除外）。
+  if (path.startsWith('/admin') && path !== '/admin/login' && path !== '/admin/guide' && !guideAck.value) {
+    return '/admin/guide'
+  }
 
   return true
 })

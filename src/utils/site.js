@@ -17,6 +17,9 @@ export const needAuthor = ref(0)
 // bootstrap/install.go 使用同一份事实（iptv.db + config.yml + install.lock）。
 export const installed = ref(true)
 
+/** 使用说明是否已被确认。未确认时进后台会被引导页锁定，禁止进入其它页面。 */
+export const guideAck = ref(true)
+
 /** 引导数据是否已就位。仅调试/自检用，业务代码不必读它。 */
 export const bootLoaded = ref(false)
 
@@ -40,6 +43,10 @@ export async function loadBoot() {
     // installed 缺失时保持默认 true（见文件头「兜底策略」）
     if (b.installed !== undefined && b.installed !== null) {
       installed.value = Boolean(b.installed)
+    }
+    // guide_ack 缺失时保持默认 true（见文件头「兜底策略」）—— 取不到引导数据也不锁死用户。
+    if (b.guide_ack !== undefined && b.guide_ack !== null) {
+      guideAck.value = Boolean(b.guide_ack)
     }
     bootLoaded.value = true
     return true
