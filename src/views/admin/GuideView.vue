@@ -2,7 +2,8 @@
 // 使用说明 —— 首次进入系统的引导页。渲染 POST /api/guide/data 返回的 Guide.md 原文。
 // 未确认（guideAck=false）时由路由守卫锁定在本页，其它后台页进不去；
 // 必须阅读至页尾并点击「我已知晓系统使用方法」后，才放行其余页面。
-import { ref, computed, onMounted, nextTick } from 'vue'
+// 已确认（guideAck=true）后从菜单再进本页时不显示确认按钮。
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { post } from '@/api/http'
 import { renderMarkdown } from '@/utils/markdown'
@@ -15,6 +16,9 @@ const content = ref('')
 const loading = ref(true)
 const canAck = ref(false)
 const scrollEl = ref(null)
+// 卡片自身不内滚（高度随内容），页面级滚动容器是 AdminLayout 的
+// SidebarInset（<main data-slot="sidebar-inset">，overflow-y-auto）。
+let scroller = null
 
 const html = computed(() => renderMarkdown(content.value))
 
@@ -28,7 +32,10 @@ async function load() {
   } finally {
     loading.value = false
     await nextTick()
-    // 内容较短（未出现滚动条）时视为已可确认；否则需滚动到页尾。
+    // 内容 div（挂 scrollEl）此时才渲染出来，必须在此之后绑定滚动容器 ——
+    // onMounted 时 loading 仍为 true，scrollEl 还是 null。
+    bindScroller()
+    // 内容较短（页面未出现滚动）时视为已可确认；否则需滚到页尾。
     checkBottom()
     bindImgLoad()
   }
@@ -44,12 +51,26 @@ function bindImgLoad() {
   })
 }
 
-function onScroll() {
-  checkBottom()
+// 页面级滚动容器 = 最近的 SidebarInset（main）。挂 scroll / resize 监听。
+// 可重复调用（先解旧再绑），内容渲染完成后由 load() 的 finally 触发。
+function bindScroller() {
+  unbindScroller()
+  const el = scrollEl.value?.closest('[data-slot="sidebar-inset"]')
+  if (!el) return
+  scroller = el
+  scroller.addEventListener('scroll', checkBottom, { passive: true })
+  window.addEventListener('resize', checkBottom, { passive: true })
+}
+
+function unbindScroller() {
+  if (!scroller) return
+  scroller.removeEventListener('scroll', checkBottom)
+  window.removeEventListener('resize', checkBottom)
+  scroller = null
 }
 
 function checkBottom() {
-  const el = scrollEl.value
+  const el = scroller
   if (!el) return
   if (el.scrollHeight - el.scrollTop - el.clientHeight < 8) canAck.value = true
 }
@@ -60,6 +81,9 @@ async function ack() {
     const res = await post(API.adminGuideAck)
     if (res?.code === 1) {
       guideAck.value = true
+      // 初次确认后进主页默认展开左侧边栏：清掉历史的"折叠"记录，
+      // 让 SidebarProvider 的 defaultOpen（cookie 无 =false 即开）生效。
+      document.cookie = `sidebar_state=true; path=/; max-age=${60 * 60 * 24 * 7}`
       notify(res.msg || '已确认', 'success', 1500)
       router.push('/admin/index')
       return
@@ -71,6 +95,8 @@ async function ack() {
 }
 
 onMounted(load)
+
+onUnmounted(unbindScroller)
 </script>
 
 <template>
@@ -92,23 +118,23 @@ onMounted(load)
         v-else-if="content"
         ref="scrollEl"
         class="md-body guide-scroll"
-        :class="{ 'guide-scroll--locked': !canAck }"
-        @scroll="onScroll"
         v-html="html"
       />
       <div v-else class="ui-alert ui-alert--warning">暂无可显示的内容（Guide.md 未找到）。</div>
-    </div>
-  </div>
 
-  <div class="guide-foot" :class="{ 'guide-foot--locked': !canAck }">
-    <button
-      class="ui-btn ui-btn--primary"
-      type="button"
-      :disabled="!canAck"
-      @click="ack"
-    >
-      {{ canAck ? '我已知晓系统使用方法' : '请阅读至页尾后再确认' }}
-    </button>
+      <!-- 确认按钮置于卡片内最后面，随内容高度下沉到页尾；
+           已确认（guideAck=true）后再进本页不显示按钮 -->
+      <div v-if="!guideAck" class="guide-foot" :class="{ 'guide-foot--locked': !canAck }">
+        <button
+          class="ui-btn ui-btn--primary"
+          type="button"
+          :disabled="!canAck"
+          @click="ack"
+        >
+          {{ canAck ? '我已知晓系统使用方法' : '请阅读至页尾后再确认' }}
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -123,10 +149,10 @@ onMounted(load)
   font-size: 13px;
   line-height: 1.7;
 }
+/* 卡片高度随内容变化：不设 max-height、不加 overflow —— 卡片内不渲染滚动条，
+   纵向滚动交给页面级容器（AdminLayout 的 SidebarInset）。 */
 .guide-scroll {
-  max-height: calc(100dvh - 250px);
-  overflow-y: auto;
-  padding-right: 6px;
+  padding-right: 2px;
 }
 /* md-body 基础排版沿用升级日志的口径 */
 .md-body {
@@ -184,7 +210,9 @@ onMounted(load)
 .md-body :deep(th) { background: var(--c-surface-2); font-weight: 600; }
 
 .guide-foot {
-  margin-top: 16px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--c-border);
   display: flex;
   justify-content: center;
 }

@@ -68,7 +68,6 @@ const MENU_GROUPS = [
       { key: 'admins', label: '管理员设置', icon: 'user', paths: ['/admin/admins'] },
       // HTTPS：上传/粘贴证书、开关 443 与 80 强制跳转、查看证书信息
       { key: 'ssl', label: 'SSL 证书', icon: 'shield', paths: ['/admin/ssl'] },
-      { key: 'guide', label: '使用说明', icon: 'clipboard', paths: ['/admin/guide'] },
       { key: 'updata', label: '在线升级', icon: 'refresh', paths: ['/admin/updata'] },
     ],
   },
@@ -79,6 +78,8 @@ const MENU_GROUPS = [
       // 进阶功能：授权引擎。路径与接口已随引擎改名 license → engine
       { key: 'engine', label: '进阶功能', icon: 'key', paths: ['/admin/engine'] },
       { key: 'about', label: '升级日志', icon: 'info', paths: ['/admin/about'] },
+      // 使用说明置于整个菜单卡片最末
+      { key: 'guide', label: '使用说明', icon: 'clipboard', paths: ['/admin/guide'] },
     ],
   },
 ]
