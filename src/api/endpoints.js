@@ -167,6 +167,7 @@ export const CLIENT_ROUTES = {
   decoder: '/api/client/decoder',
   buffTimeout: '/api/client/buffTimeout',
   needAuthor: '/api/client/needAuthor',
+  forceUpdate: '/api/client/forceUpdate',
   appInfo: '/api/client/appInfo',
   // 「保存并测试」拆两步：这条只探测可达性，不落盘也不触发编译
   // （编译是分钟级重活，每改一个字就编一次会把队列打满）。

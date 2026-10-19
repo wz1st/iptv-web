@@ -32,6 +32,7 @@ const loading = ref(true)
 const decoder = ref(0)
 const buffTimeout = ref(10)
 const needAuthor = ref(false)
+const forceUpdate = ref(false)
 const tips = ref({
   loading: '',
   userExpired: '',
@@ -57,6 +58,7 @@ async function load() {
     decoder.value = Number(app.decoder ?? 0)
     buffTimeout.value = Number(app.buffTimeout ?? 10)
     needAuthor.value = Number(app.needAuthor ?? 0) === 1
+    forceUpdate.value = Number(app.forceUpdate ?? 0) === 1
     const t = g.tips || {}
     tips.value = {
       loading: t.loading || '',
@@ -87,6 +89,11 @@ async function onBuffChange() {
 async function onNeedAuthorChange(v) {
   const res = await post(A.needAuthor, { needAuthor: v ? 1 : 0 })
   notify(res?.msg || (res?.code >= 1 ? '授权设置已保存' : '保存失败'), res?.code >= 1 ? 'success' : 'danger')
+}
+
+async function onForceUpdateChange(v) {
+  const res = await post(A.forceUpdate, { forceUpdate: v ? 1 : 0 })
+  notify(res?.msg || (res?.code >= 1 ? '强制更新已保存' : '保存失败'), res?.code >= 1 ? 'success' : 'danger')
 }
 
 async function saveTips() {
@@ -133,9 +140,15 @@ onMounted(load)
               <label class="ui-field__label">客户端授权</label>
               <AppSwitch v-model="needAuthor" @change="onNeedAuthorChange" />
             </div>
+
+            <div class="ui-field" style="flex: none">
+              <label class="ui-field__label">强制更新</label>
+              <AppSwitch v-model="forceUpdate" @change="onForceUpdateChange" />
+            </div>
           </div>
           <small class="ui-help">
-            三项改完立即生效，<strong>不需要重新编译 APK</strong>；清和壳与骆驼壳共用同一份配置。
+            各项改完立即生效，<strong>不需要重新编译 APK</strong>；清和壳与骆驼壳共用同一份配置。
+            「强制更新」开启后，客户端发现新版本会弹出<strong>无法取消</strong>的更新提示。
           </small>
         </div>
       </div>
