@@ -34,6 +34,8 @@ export const API = {
   adminEngineData: '/api/engine/data',
   // SSL 证书（系统菜单）：证书信息、开关、nginx 版本、文件路径
   adminSslData: '/api/ssl/data',
+  // 出网代理（系统菜单）：协议/地址/端口/账密/作用范围
+  adminProxyData: '/api/proxy/data',
 
   // ---- 只读探测 / 轮询（同样是 POST，只是没有参数）----
   adminEngineCheckProxy: '/api/engine/checkProxy',
@@ -45,6 +47,8 @@ export const API = {
   adminUpdataDownWeb: '/api/updata/downWeb',
   adminUpdataDownEngine: '/api/updata/downEngine',
   adminUpdata: '/api/updata/run',
+  // 升级状态与进度：升级遮罩的唯一依据（刷新页面靠它恢复）
+  adminUpdataStatus: '/api/updata/status',
 
   // ---- 文件上传（multipart/form-data，不参与 JSON 化）----
   // 客户端图标 / 背景的上传**不在这一组**：这两个是**按壳分**的端点（清和壳
@@ -239,6 +243,15 @@ export const SSL_ROUTES = {
   save: '/api/ssl/save',
   // 清除：删掉证书与私钥，并把两个开关一起关掉
   clear: '/api/ssl/clear',
+}
+
+/** 出网代理（/api/proxy）—— 协议/地址/端口/账密/作用范围落在 config.yml 的 out_proxy 段 */
+export const PROXY_ROUTES = {
+  // 只测不存：连代理 + 访问 GitHub/Google，失败时 data.failType 区分
+  // dial（代理连不通）与 overseas（能连但出不去）
+  test: '/api/proxy/test',
+  // 保存：服务端内部会再测一次，不通过一律不落盘
+  save: '/api/proxy/save',
 }
 
 /** 只有一个动作的资源：端点即动作（补上动作名后统一两段式） */

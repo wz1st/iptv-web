@@ -6,6 +6,7 @@ import { post } from '@/api/http'
 import { notify } from '@/utils/feedback'
 import { confirm } from '@/utils/confirm'
 import { API } from '@/api/endpoints'
+import { markUpgradeStarted } from '@/utils/upgrade'
 
 const version = ref('')       // 管理系统（api，与前端同版本号）
 const engineVersion = ref('') // 引擎
@@ -60,6 +61,10 @@ async function runUpgrade(kind) {
     }
     if (!(await confirm(`${down.msg} 下载完成，是否升级？`, { okText: '确认', okVariant: 'danger' }))) return
 
+    // 点下"确认升级"的这一刻就上遮罩，不等服务端回话：接下来 api 进程会被
+    // 启动器重启，请求本来就要失败/超时，等回话等于让用户盯着空屏。
+    // 遮罩之后由 /api/updata/status 轮询接管，直到完成或失败才撤。
+    markUpgradeStarted(kind)
     const up = await post(API.adminUpdata)
     notify(up?.msg || '已触发更新', up?.type || 'info', 3000)
   } catch {

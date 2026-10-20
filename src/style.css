@@ -809,6 +809,46 @@ html[data-theme="dark"] .ui-help--ink { color: #fff; }
 }
 @keyframes ui-spin { to { transform: rotate(360deg); } }
 
+/* ---------- 在线升级遮罩 ---------- */
+/* z-index 必须高于 .ui-loading-layer(2900)：升级期间其它请求陆续失败，
+   前端会顺手 loadingShow()，那个转圈不该浮在升级遮罩上面。 */
+.ui-upgrade-mask {
+  position: fixed; inset: 0; z-index: 3200;
+  background: color-mix(in oklab, var(--background) 78%, transparent);
+  backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.ui-upgrade-card {
+  width: min(480px, 100%);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 12px 40px 0 oklab(0% 0 0 / 0.18);
+  padding: 28px 24px 22px;
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.ui-upgrade-card .ui-spinner { margin-bottom: 2px; }
+.ui-upgrade-title { margin: 0; font-size: 16px; font-weight: 600; }
+.ui-upgrade-msg { margin: 0; font-size: 13px; color: var(--muted-foreground); min-height: 20px; }
+.ui-upgrade-note {
+  margin: 6px 0 0; font-size: 12px; line-height: 1.6;
+  color: var(--muted-foreground);
+  border-top: 1px solid var(--border); padding-top: 12px; width: 100%;
+}
+/* 进度条：宽度用 transition 过渡，但**不做动画回退** —— api 重启那一拍
+   会连着来好几次轮询，卡顿感反而像卡死。 */
+.ui-progress {
+  width: 100%; height: 8px; margin-top: 6px;
+  background: var(--border); border-radius: 999px; overflow: hidden;
+}
+.ui-progress__bar {
+  height: 100%; border-radius: 999px;
+  background: var(--foreground);
+  transition: width .4s ease;
+}
+
 /* ---------- Pagination ---------- */
 .ui-pager {
   display: flex; align-items: center; justify-content: center;

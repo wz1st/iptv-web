@@ -68,6 +68,8 @@ const MENU_GROUPS = [
       { key: 'admins', label: '管理员设置', icon: 'user', paths: ['/admin/admins'] },
       // HTTPS：上传/粘贴证书、开关 443 与 80 强制跳转、查看证书信息
       { key: 'ssl', label: 'SSL 证书', icon: 'shield', paths: ['/admin/ssl'] },
+      // 出网代理：可分别作用于 EPG 更新 / 频道源更新 / 在线升级 / 中转取流
+      { key: 'proxy', label: '代理设置', icon: 'globe', paths: ['/admin/proxy'] },
       { key: 'updata', label: '在线升级', icon: 'refresh', paths: ['/admin/updata'] },
     ],
   },

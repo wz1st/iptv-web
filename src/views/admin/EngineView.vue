@@ -6,6 +6,7 @@ import { submitAction } from '@/utils/page'
 import { notify } from '@/utils/feedback'
 import { confirm } from '@/utils/confirm'
 import { API, ENGINE_ROUTES } from '@/api/endpoints'
+import { markUpgradeStarted } from '@/utils/upgrade'
 import AppSwitch from '@/components/AppSwitch.vue'
 import AppModal from '@/components/AppModal.vue'
 
@@ -293,6 +294,8 @@ async function checkEngineUpdate() {
     const down = await post(API.adminUpdataDownEngine)
     if (down?.code === 1) {
       if (!(await confirm(`${down.msg} 下载完成，是否升级？`, { okText: '确认', okVariant: 'danger' }))) return
+      // 与「在线升级」页同一套遮罩：引擎升级同样会重启进程。
+      markUpgradeStarted('engine')
       const up = await post(API.adminUpdata)
       notify(up?.msg || '已触发更新', up?.type || 'info', 3000)
     } else if (down?.code === 2) {

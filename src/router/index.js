@@ -12,6 +12,7 @@ const ChannelManage = () => import('@/views/admin/ChannelManageView.vue')
 const ClientSettings = () => import('@/views/admin/ClientSettingsView.vue')
 const AdminsPanel = () => import('@/views/admin/system/AdminsPanel.vue')
 const SslPanel = () => import('@/views/admin/system/SslPanel.vue')
+const ProxyPanel = () => import('@/views/admin/system/ProxyPanel.vue')
 
 const routes = [
   // ---- 前台（未安装时由守卫改道到 /install）----
@@ -90,6 +91,8 @@ const routes = [
       { path: 'admins', name: 'admin-admins', component: AdminsPanel, meta: { title: '管理员设置' } },
       // SSL 证书：证书/私钥落在 /config/cert，开关与端口落在 config.yml 的 ssl 段
       { path: 'ssl', name: 'admin-ssl', component: SslPanel, meta: { title: 'SSL 证书' } },
+      // 出网代理：协议/地址/端口/账密 + 作用范围，落在 config.yml 的 out_proxy 段
+      { path: 'proxy', name: 'admin-proxy', component: ProxyPanel, meta: { title: '代理设置' } },
       // 进阶功能：授权引擎。改造前路径是 /admin/license，接口与二进制已改名 engine
       { path: 'engine', name: 'admin-engine', component: () => import('@/views/admin/EngineView.vue'), meta: { title: '进阶功能' } },
       { path: 'about', name: 'admin-about', component: () => import('@/views/admin/AboutView.vue'), meta: { title: '升级日志' } },
