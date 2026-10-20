@@ -14,6 +14,9 @@ export class ApiError extends Error {
 
 /** 登录失效统一处理 */
 function handleUnauthorized() {
+  // 已经在登录页就什么都不做：把 href 赋成当前同一个 URL 仍会触发整页刷新，
+  // 于是一个每秒轮询的接口（升级状态）能让登录页变成"一直在刷新"。
+  if (window.location.pathname === '/admin/login') return
   if (window.location.pathname.startsWith('/admin')) {
     window.location.href = '/admin/login'
   }
