@@ -41,9 +41,10 @@ const TYPES = [
   { value: 'http', label: 'HTTP 代理' },
 ]
 
-// 中转这一项只有授权用户能用（服务端 relayAllowed 与此处同源），
-// 且只支持 SOCKS5 —— 长连接经 HTTP 代理的 CONNECT 隧道很容易中途断，
-// 中转断流的表现是「直播拉不动」，排查成本远高于一开始就不给选。
+// 中转这一项对全部授权账号开放（不限授权类型，服务端 relayAllowed 与
+// 此处同源，取的是中转开关本身那把尺），但只支持 SOCKS5 ——
+// 长连接经 HTTP 代理的 CONNECT 隧道很容易中途断，中转断流的表现是
+// 「直播拉不动」，排查成本远高于一开始就不给选。
 const relayAllowed = computed(() => !!data.value?.relayAllowed)
 const relayUsable = computed(() => relayAllowed.value && form.value.type === 'socks5')
 const proxyOn = computed(() => form.value.type !== '')
@@ -264,7 +265,7 @@ function onTypeChange() {
           <div class="ui-field" style="margin-bottom: 8px">
             <AppSwitch v-model="form.useRelay" :disabled="!relayUsable">中转取流</AppSwitch>
             <small class="ui-help">
-              <template v-if="!relayAllowed">仅授权用户（定制授权）可用。</template>
+              <template v-if="!relayAllowed">仅授权账号可用。</template>
               <template v-else-if="form.type !== 'socks5'">中转取流只支持 SOCKS5 代理，请先把类型改成 SOCKS5。</template>
               <template v-else>服务器替播放器取流时经 SOCKS5 代理连源站。</template>
             </small>
