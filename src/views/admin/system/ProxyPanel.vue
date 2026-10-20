@@ -22,20 +22,52 @@
 //
 // 与私钥同理：口令一旦回显就会留在浏览器历史与缓存里。服务端只回显
 // 「是否已配置」，留空表示不改。
-import { ref, computed, onMounted } from 'vue'
+//
+// ## 反馈方式：右下角提示 vs 弹窗
+//
+//   - 主动点「测试代理」⇒ **只弹右下角提示**，不弹窗。测试是用户自己想
+//     知道结果，不该用模态框把页面锁住。
+//   - 点「保存配置」且保存成功 ⇒ 同样只弹右下角提示。
+//   - 点「保存配置」但**测试没通过、没落盘** ⇒ 弹一个**可主动关闭**的弹窗，
+//     因为这时候需要用户做一个决定：要不要强制保存。
+//     只有「代理能连上、但访问不了境外」（overseas）才给「强制保存」这个出口；
+//     「连不上代理」（dial）不给 —— 那份配置存下去必然是坏的，
+//     运行时的表现是各类抓取静默失败，比压根没配更难排查。
+//
+// ## 测过就不用再测
+//
+// 点「测试代理」通过后，服务端会发一张凭据（testToken）回来，它记着
+// "这份配置刚测过、结论是通过"。接着点「保存配置」时带着它，
+// 服务端核对配置（协议/地址/端口/账号开关/用户名/口令）**一个字都没改过**
+// 才免掉那次重复的外网探测；改过任何一项就作废，老老实实重测一遍。
+import { ref, computed, onMounted, watch } from 'vue'
 import { post } from '@/api/http'
 import { loadingShow, loadingHide, notify } from '@/utils/feedback'
 import { API, PROXY_ROUTES } from '@/api/endpoints'
 import AppSwitch from '@/components/AppSwitch.vue'
+import AppModal from '@/components/AppModal.vue'
 
 const data = ref(null)
 const loading = ref(false)
 const saving = ref(false)
 const testing = ref(false)
-// 最近一次测试/保存的结论，用于在页面上留一张"通过/不通过 + 原因"的卡片。
-const lastTest = ref(null)
 // 正在单独提交的作用范围开关 key，避免拨动过程中重复发请求。
 const scopeBusy = ref('')
+
+// 「测试代理」通过后服务端给的凭据：带着它保存，服务端就不必再测一遍。
+const testToken = ref('')
+// 测的时候这份配置长什么样（前端侧快照）。改动任一项就把凭据丢掉 ——
+// 服务端那边还会按配置指纹再核一遍，这里只是少发一个必然作废的凭据。
+const testedSig = ref('')
+// 保存失败（测试没过）时的弹窗内容。
+const failDialog = ref({
+  visible: false,
+  failType: '',
+  text: '',
+  canForce: false,
+  token: '',
+  busy: false,
+})
 
 const form = ref({
   type: '', host: '', port: 0,
@@ -106,6 +138,21 @@ async function load() {
 }
 onMounted(load)
 
+// 配置指纹（前端侧）：测完之后任何一项变了，凭据就作废。
+function configSig() {
+  const f = form.value
+  return [f.type, f.host, f.port, f.authOn, f.user, f.pwd].join('')
+}
+
+// 改了就作废：地址/端口/账号/协议动过，之前那次测试的结论不再作数。
+// （服务端还会按配置指纹再核一遍，这里只是别把一个必然作废的凭据发过去。）
+watch(
+  () => configSig(),
+  (now) => {
+    if (now !== testedSig.value) testToken.value = ''
+  }
+)
+
 // 提交体：只带服务端认识的字段，pwd 留空表示"不改口令"。
 // 刻意**不带**四个作用范围开关 —— 它们各自单独提交。
 function body() {
@@ -132,6 +179,7 @@ function failHint(res) {
   return base
 }
 
+// 主动点「测试代理」：只右下角提示，不弹窗。
 async function test() {
   if (!proxyOn.value) {
     notify('当前是无代理，无需测试', 'info', 2500)
@@ -145,14 +193,19 @@ async function test() {
   loadingShow()
   try {
     const res = await post(PROXY_ROUTES.test, body())
-    lastTest.value = {
-      ok: !!res?.data?.ok,
-      failType: res?.data?.failType || '',
-      text: res?.data?.ok
+    const ok = !!res?.data?.ok
+    if (ok) {
+      // 记下凭据：接下来点保存时，服务端可以免掉重复的外网探测。
+      testToken.value = res?.data?.testToken || ''
+      testedSig.value = configSig()
+    }
+    notify(
+      ok
         ? `连接测试通过${res?.data?.latencyMs ? `，连接耗时 ${res.data.latencyMs} 毫秒` : ''}`
         : failHint(res),
-    }
-    notify(lastTest.value.text, res?.data?.ok ? 'success' : 'danger', 3500)
+      ok ? 'success' : 'danger',
+      ok ? 3000 : 5000,
+    )
   } catch {
     notify('测试失败，请检查代理地址是否可达', 'danger')
   } finally {
@@ -161,32 +214,62 @@ async function test() {
   }
 }
 
-async function save() {
+// 点「保存配置」。成功 ⇒ 只右下角提示；测试没过 ⇒ 弹可关闭的弹窗，
+// 由用户决定要不要强制保存。
+async function save(force = false) {
   // 有代理才校验地址；无代理直落盘（服务端也不测）。
   if (proxyOn.value && (!form.value.host.trim() || !(Number(form.value.port) > 0))) {
     notify('请先填写代理地址与端口', 'warning')
     return
   }
   saving.value = true
+  failDialog.value.busy = true
   loadingShow()
   try {
-    const res = await post(PROXY_ROUTES.save, body())
+    const res = await post(PROXY_ROUTES.save, {
+      ...body(),
+      force: force ? 1 : 0,
+      // 强制保存时要把「失败结论」那张凭据带上，服务端才知道
+      // 强存的依据是它实测到的 overseas 失败（而不是重新测一遍）。
+      testToken: failDialog.value.token || testToken.value || '',
+    })
     if (res?.code >= 1) {
-      notify(res?.msg || '代理配置已保存', 'success')
+      failDialog.value.visible = false
+      notify(res?.msg || '代理配置已保存', res?.type === 'warning' ? 'warning' : 'success', 3500)
+      // 存完这份配置就没必要再留着旧凭据了。
+      testToken.value = ''
+      testedSig.value = ''
       await load()
     } else {
       // 不通过时服务端**没有落盘**，页面保持用户刚填的内容，让他改完再存。
-      lastTest.value = {
-        ok: false, failType: res?.data?.failType || '', text: failHint(res),
+      // 这次失败也可能是"上次测的时候通了、现在通了"之外的原因，
+      // 所以失败凭据要单独记，别和成功那张混。
+      testToken.value = ''
+      testedSig.value = ''
+      const failType = res?.data?.failType || ''
+      // 只有「能连上但出不去境外」才有强制保存的出口；
+      // 其它失败（比如连不上代理）直接给结论，不给强存按钮。
+      failDialog.value = {
+        visible: true,
+        failType,
+        text: failHint(res),
+        canForce: !!res?.data?.canForce,
+        token: res?.data?.testToken || '',
+        busy: false,
       }
-      notify(lastTest.value.text, 'danger', 5000)
     }
   } catch {
     notify('保存失败，请稍后重试', 'danger')
   } finally {
     loadingHide()
     saving.value = false
+    failDialog.value.busy = false
   }
+}
+
+// 弹窗里的「强制保存」：用户已经看过失败结论并明确坚持。
+function forceSave() {
+  save(true)
 }
 
 // 每个作用范围开关各自即时提交：拨完立刻生效，不需要再点「保存配置」。
@@ -244,6 +327,7 @@ function onTypeChange() {
           <small class="ui-help" style="display: block; margin-top: 4px">
             配置写在 config.yml 的 <code>out_proxy</code> 段（容器内 <code>/config/config.yml</code>）。
             保存代理地址前会实测「连代理 + 访问 GitHub + 访问 Google」，不通过不会写进配置；
+            刚点过「测试代理」且配置没动过时，保存不再重复测一遍。
             右边四个开关则是拨一下就单独生效。
           </small>
         </div>
@@ -338,14 +422,14 @@ function onTypeChange() {
 
             <!-- 按钮放在代理地址卡片里：它操作的正是上面这些输入框。 -->
             <div class="proxy-actions">
-              <button class="ui-btn ui-btn--primary" type="button" :disabled="saving || testing" @click="save">
+              <button class="ui-btn ui-btn--primary" type="button" :disabled="saving || testing" @click="save(false)">
                 保存配置
               </button>
-              <button class="ui-btn" type="button" :disabled="saving || testing" @click="test">
+              <button class="ui-btn" type="button" :disabled="saving || testing" @click="test()">
                 测试代理
               </button>
               <span class="ui-help" style="margin-top: 0">
-                {{ proxyOn ? '保存前会先做连通性测试' : '无代理：不测试，直接保存并关闭作用范围' }}
+                {{ proxyOn ? '保存前会先做连通性测试（刚测过且配置未改则不重复测）' : '无代理：不测试，直接保存并关闭作用范围' }}
               </span>
             </div>
           </div>
@@ -393,25 +477,45 @@ function onTypeChange() {
         </div>
       </div>
 
-      <!-- 3) 最近一次测试结论 -->
-      <div v-if="lastTest" class="ui-card">
-        <div class="ui-card__header"><h4>连通性测试</h4></div>
-        <div class="ui-card__body">
-          <div
-            class="ui-alert"
-            :class="lastTest.ok ? 'ui-alert--success' : 'ui-alert--danger'"
-          >
-            <strong v-if="lastTest.ok">通过</strong>
-            <strong v-else>不通过</strong>
-            ：{{ lastTest.text }}
-          </div>
-          <small class="ui-help" style="margin-top: 8px; display: block">
-            测试会依次做三件事：连一下代理服务器、用它访问 GitHub、用它访问 Google。
-            「连不上代理」和「代理能连但访问不了境外」是两回事 —— 前者要核对地址端口，
-            后者说明这个代理只是个国内出口。
-          </small>
+      <!-- 3) 保存失败（测试没通过）时的弹窗：可主动关闭，并按失败类型
+           决定要不要给「强制保存」这个出口。 -->
+      <AppModal
+        v-model="failDialog.visible"
+        title="代理配置未保存"
+        size="lg"
+      >
+        <div class="ui-alert ui-alert--danger">
+          <strong>不通过</strong>：{{ failDialog.text }}
         </div>
-      </div>
+        <small class="ui-help" style="display: block; margin-top: 10px">
+          测试会依次做三件事：连一下代理服务器、用它访问 GitHub、用它访问 Google。
+          <template v-if="failDialog.failType === 'dial'">
+            这次是**连不上代理**（地址、端口、协议或账密不对），这种配置存下去必然是坏的，
+            因此不提供强制保存 —— 请先把它改对。
+          </template>
+          <template v-else-if="failDialog.failType === 'overseas'">
+            这次是**代理能连上、但访问不了境外**。这种代理对只访问国内资源的用途仍然有用，
+            你可以坚持保存（走代理的用途可能失败）；也可以换个出口或换个代理再试。
+          </template>
+          <template v-else>
+            请根据上面的原因调整代理地址、端口或协议后重试。
+          </template>
+        </small>
+        <template #footer>
+          <button class="ui-btn" type="button" :disabled="failDialog.busy" @click="failDialog.visible = false">
+            关闭
+          </button>
+          <button
+            v-if="failDialog.canForce"
+            class="ui-btn ui-btn--warning"
+            type="button"
+            :disabled="failDialog.busy"
+            @click="forceSave"
+          >
+            强制保存
+          </button>
+        </template>
+      </AppModal>
     </template>
   </div>
 </template>
