@@ -175,9 +175,11 @@ async function logout() {
           </SidebarGroup>
         </SidebarContent>
 
-        <div class="mt-auto shrink-0 border-t px-4 py-3 text-center text-[11.5px] text-muted-foreground">
+        <!-- 侧栏底部：版本号 + 两个外链。行距与内边距都压到最小 ——
+             这一块常驻可见，占太高会把上面的菜单挤到需要滚动。 -->
+        <div class="mt-auto shrink-0 border-t px-4 py-1.5 text-center text-[11.5px] leading-tight text-muted-foreground">
           <p class="m-0">{{ version }}</p>
-          <p class="m-0 mt-1 flex justify-center gap-3">
+          <p class="m-0 mt-0.5 flex justify-center gap-3">
             <a href="https://www.qingh.xyz" target="_blank" rel="noopener">清和博客</a>
             <NavLink to="/admin/about#bottom">赞助作者</NavLink>
           </p>

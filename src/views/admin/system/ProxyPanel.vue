@@ -1,16 +1,22 @@
 <script setup>
 // 出网代理设置 —— 系统菜单下的网络代理配置。
 //
-// 一份配置（协议/地址/端口/账密）配一个**作用范围**：EPG 更新、频道源更新、
-// 在线升级、中转取流四项各自独立开关，谁需要谁勾。四项都关着等于没配代理。
+// ## 两件事，两条提交路径
 //
-// ## 保存前一定先测
+// 页面上这两块的风险等级完全不同，所以拆成互不干扰的两次提交：
 //
-// 代理配错的后果不是报错而是**静默失效**：填错端口，EPG 与频道源更新会各自
-// 安静地失败，日志只有一行「请求失败」，用户在后台完全看不出问题。所以服务端
-// 在落盘前会实测「连代理 + 访问 GitHub + 访问 Google」，不通过一律不存，并回话
-// failType=dial（代理连不通）/ overseas（能连但出不去）—— 这两种处置完全不同，
-// 页面照实分开显示。
+//   - 左「代理地址」：协议/地址/端口/账密。填错的后果不是报错而是**静默失效**
+//     （EPG、更新、下载各自安静地失败，日志只有一行「请求失败」），所以服务端
+//     在落盘前会实测「连代理 + 访问 GitHub + 访问 Google」，不通过一律不存，
+//     并回话 failType=dial（代理连不通）/ overseas（能连但出不去）。
+//   - 右「作用范围」：四个开关各自即时提交，不跟「保存配置」捆绑 ——
+//     拨开关就想看到结果，还要再点一次保存才生效，是把一次操作变成两步。
+//
+// ## 无代理（协议选"无代理"）
+//
+// 不清空地址与端口（下次启用不用重填），**跳过测试流程直接落盘**，并把四个
+// 作用范围一并关闭：没配代理却勾着"走代理"，运行时表现是静默直连，
+// 和"配了但坏了"无法区分。
 //
 // ## 口令不回显
 //
@@ -28,6 +34,8 @@ const saving = ref(false)
 const testing = ref(false)
 // 最近一次测试/保存的结论，用于在页面上留一张"通过/不通过 + 原因"的卡片。
 const lastTest = ref(null)
+// 正在单独提交的作用范围开关 key，避免拨动过程中重复发请求。
+const scopeBusy = ref('')
 
 const form = ref({
   type: '', host: '', port: 0,
@@ -35,10 +43,20 @@ const form = ref({
   useEpg: 0, useSrc: 0, useUp: 1, useRelay: 0,
 })
 
+// 协议做成三个单选框而不是下拉：只有三个选项且互斥，下拉要多点一次才能看清
+// 有哪些选择；单选框一眼看全，且"无代理"这个最该被看到的选项排在最前。
 const TYPES = [
-  { value: '', label: '无代理' },
-  { value: 'socks5', label: 'SOCKS5 代理' },
-  { value: 'http', label: 'HTTP 代理' },
+  { value: '', label: '无代理', hint: '全部功能直连' },
+  { value: 'socks5', label: 'SOCKS5', hint: 'v2ray / Shadowrocket' },
+  { value: 'http', label: 'HTTP', hint: 'Clash / Privoxy' },
+]
+
+// 四个作用范围：key 与后端 dto.OutProxyScopeDto.Key 逐字对齐。
+const SCOPES = [
+  { key: 'useEpg', label: 'EPG 更新', desc: '定时任务与手动「更新全部」抓取 EPG 源时走代理。' },
+  { key: 'useSrc', label: '频道源更新', desc: '定时更新、手动更新列表、新增频道源时的抓取走代理。' },
+  { key: 'useUp', label: '在线升级', desc: '检查更新与下载升级包走代理（访问 GitHub）。' },
+  { key: 'useRelay', label: '中转取流', desc: '服务器替播放器取流时经代理连源站（仅 SOCKS5）。' },
 ]
 
 // 中转这一项对全部授权账号开放（不限授权类型，服务端 relayAllowed 与
@@ -46,17 +64,30 @@ const TYPES = [
 // 长连接经 HTTP 代理的 CONNECT 隧道很容易中途断，中转断流的表现是
 // 「直播拉不动」，排查成本远高于一开始就不给选。
 const relayAllowed = computed(() => !!data.value?.relayAllowed)
-const relayUsable = computed(() => relayAllowed.value && form.value.type === 'socks5')
 const proxyOn = computed(() => form.value.type !== '')
-const scopeCount = computed(() =>
-  ['useEpg', 'useSrc', 'useUp', 'useRelay'].filter((k) => form.value[k] === 1).length,
-)
+
+// savedType 是**服务端已保存**的协议，不是表单里当前选中的那个。
+// 开关能不能拨，看的是"服务器上到底有没有一个能用的代理" —— 在表单里
+// 勾了 SOCKS5 但还没点保存时，服务器上仍然是空的，此时拨开关只会得到
+// "看着生效、实际静默直连"的状态，那比直接不让拨更难排查。
+const savedType = ref('')
+const savedProxyOn = computed(() => savedType.value !== '' && savedType.value !== 'none')
+const savedRelayUsable = computed(() => relayAllowed.value && savedType.value === 'socks5')
+
+// 某个作用范围开关此刻能不能拨。中转另加"必须是 SOCKS5"。
+function scopeDisabled(key) {
+  if (scopeBusy.value === key) return true
+  if (key === 'useRelay') return !savedRelayUsable.value
+  return !savedProxyOn.value
+}
+const scopeCount = computed(() => SCOPES.filter((s) => form.value[s.key] === 1).length)
 
 async function load() {
   loading.value = true
   try {
     const res = await post(API.adminProxyData)
     data.value = res
+    savedType.value = res?.type || ''
     form.value.type = res?.type || ''
     form.value.host = res?.host || ''
     form.value.port = Number(res?.port) || 0
@@ -76,6 +107,7 @@ async function load() {
 onMounted(load)
 
 // 提交体：只带服务端认识的字段，pwd 留空表示"不改口令"。
+// 刻意**不带**四个作用范围开关 —— 它们各自单独提交。
 function body() {
   return {
     type: form.value.type,
@@ -84,10 +116,6 @@ function body() {
     authOn: form.value.authOn,
     user: form.value.authOn === 1 ? form.value.user : '',
     pwd: form.value.authOn === 1 ? form.value.pwd : '',
-    useEpg: form.value.useEpg,
-    useSrc: form.value.useSrc,
-    useUp: form.value.useUp,
-    useRelay: relayUsable.value ? form.value.useRelay : 0,
   }
 }
 
@@ -105,6 +133,14 @@ function failHint(res) {
 }
 
 async function test() {
+  if (!proxyOn.value) {
+    notify('当前是无代理，无需测试', 'info', 2500)
+    return
+  }
+  if (!form.value.host.trim() || !(Number(form.value.port) > 0)) {
+    notify('请先填写代理地址与端口', 'warning')
+    return
+  }
   testing.value = true
   loadingShow()
   try {
@@ -126,7 +162,8 @@ async function test() {
 }
 
 async function save() {
-  if (form.value.type && (!form.value.host.trim() || !(Number(form.value.port) > 0))) {
+  // 有代理才校验地址；无代理直落盘（服务端也不测）。
+  if (proxyOn.value && (!form.value.host.trim() || !(Number(form.value.port) > 0))) {
     notify('请先填写代理地址与端口', 'warning')
     return
   }
@@ -134,14 +171,14 @@ async function save() {
   loadingShow()
   try {
     const res = await post(PROXY_ROUTES.save, body())
-    lastTest.value = res?.data?.ok === false
-      ? { ok: false, failType: res?.data?.failType || '', text: failHint(res) }
-      : { ok: true, failType: '', text: res?.msg || '代理配置已保存' }
     if (res?.code >= 1) {
       notify(res?.msg || '代理配置已保存', 'success')
       await load()
     } else {
       // 不通过时服务端**没有落盘**，页面保持用户刚填的内容，让他改完再存。
+      lastTest.value = {
+        ok: false, failType: res?.data?.failType || '', text: failHint(res),
+      }
       notify(lastTest.value.text, 'danger', 5000)
     }
   } catch {
@@ -152,14 +189,43 @@ async function save() {
   }
 }
 
-// 协议从中转切走时把中转的勾去掉：留着会出现"勾着一个永远不生效的开关"。
-function onTypeChange() {
-  if (!relayUsable.value) form.value.useRelay = 0
-  if (form.value.type === '') {
-    form.value.authOn = 0
-    form.value.user = ''
-    form.value.pwd = ''
+// 每个作用范围开关各自即时提交：拨完立刻生效，不需要再点「保存配置」。
+// 失败时把开关拨回服务端的值 —— 让界面回到"与服务器一致"，而不是
+// 停在一个看着已生效、实际没生效的状态。
+async function toggleScope(key, next) {
+  if (scopeBusy.value) return
+  if (next === 1 && !savedProxyOn.value) {
+    notify('还没有配置代理类型，请先在左侧保存协议、地址与端口', 'warning', 4000)
+    return
   }
+  if (key === 'useRelay' && next === 1 && !savedRelayUsable.value) {
+    notify('中转取流只支持 SOCKS5 代理，请先保存 SOCKS5 类型的代理配置', 'warning', 4000)
+    return
+  }
+  const prev = form.value[key]
+  scopeBusy.value = key
+  try {
+    const res = await post(PROXY_ROUTES.scope, { key, value: next ? 1 : 0 })
+    if (res?.code >= 1) {
+      form.value[key] = next ? 1 : 0
+    } else {
+      form.value[key] = prev
+      notify(res?.msg || '开关保存失败', 'danger', 4000)
+    }
+  } catch {
+    form.value[key] = prev
+    notify('开关保存失败，请稍后重试', 'danger')
+  } finally {
+    scopeBusy.value = ''
+  }
+}
+
+// 协议从中转切走时把中转的勾去掉：留着会出现"勾着一个永远不生效的开关"。
+// 无代理时保留地址与端口（不清空），只把账密开关收起来。
+function onTypeChange() {
+  // 服务端存的不是 SOCKS5 时，中转勾选没有意义（界面也会禁用），直接清掉。
+  if (!savedRelayUsable.value) form.value.useRelay = 0
+  if (form.value.type === '') form.value.authOn = 0
 }
 </script>
 
@@ -174,118 +240,160 @@ function onTypeChange() {
     <template v-else>
       <div class="ui-alert ui-alert--info" style="margin-bottom: 16px">
         <div>
-          <strong>代理只作用在下面勾选的功能上</strong>，没勾的一律直连。
+          <strong>代理只作用在右边勾选的功能上</strong>，没勾的一律直连。
           <small class="ui-help" style="display: block; margin-top: 4px">
             配置写在 config.yml 的 <code>out_proxy</code> 段（容器内 <code>/config/config.yml</code>）。
-            保存前会实测「连代理 + 访问 GitHub + 访问 Google」，不通过不会写进配置。
+            保存代理地址前会实测「连代理 + 访问 GitHub + 访问 Google」，不通过不会写进配置；
+            右边四个开关则是拨一下就单独生效。
           </small>
         </div>
       </div>
 
-      <!-- 1) 协议与地址 -->
-      <div class="ui-card">
-        <div class="ui-card__header"><h4>代理地址</h4></div>
-        <div class="ui-card__body">
-          <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start">
-            <div class="ui-field" style="width: 200px">
+      <!-- 两张卡片左右并排：左边是"配什么代理"，右边是"给谁用"。
+           窄屏自动回落成上下排列（grid 的 auto-fit + minmax）。
+           ★ 必须带 ui-grid：全局样式 `.ui-card + .ui-card { margin-top:16px }`
+           会让**第二张卡整体下沉 16px**（表现为"两卡顶部没对齐"），
+           项目里只对 .ui-grid 清了零。 -->
+      <div class="ui-grid proxy-grid">
+        <!-- 1) 代理地址（含两个按钮） -->
+        <div class="ui-card">
+          <div class="ui-card__header"><h4>代理地址</h4></div>
+          <div class="ui-card__body">
+            <!-- 协议：三个单选框独占一行（原来挤在地址左边，得点开下拉才知道有哪些） -->
+            <div class="ui-field" style="margin-bottom: 12px">
               <label class="ui-field__label">代理类型</label>
-              <select v-model="form.type" class="ui-select" @change="onTypeChange">
-                <option v-for="t in TYPES" :key="t.value" :value="t.value">{{ t.label }}</option>
-              </select>
+              <div class="proxy-types">
+                <label
+                  v-for="t in TYPES"
+                  :key="t.value"
+                  class="proxy-type"
+                  :class="{ 'proxy-type--on': form.type === t.value }"
+                >
+                  <input
+                    v-model="form.type"
+                    type="radio"
+                    name="proxy-type"
+                    :value="t.value"
+                    class="proxy-type__radio"
+                    @change="onTypeChange"
+                  >
+                  <span class="proxy-type__body">
+                    <span class="proxy-type__label">{{ t.label }}</span>
+                    <span class="proxy-type__hint">{{ t.hint }}</span>
+                  </span>
+                </label>
+              </div>
             </div>
-            <div class="ui-field" style="width: 280px">
-              <label class="ui-field__label">代理地址</label>
-              <input
-                v-model="form.host"
-                class="ui-input"
-                :disabled="!proxyOn"
-                placeholder="例如 127.0.0.1 或 10.10.0.8"
-                spellcheck="false"
-              />
-              <small class="ui-help">可以带 scheme（socks5://…）或端口，会自动拆开。</small>
-            </div>
-            <div class="ui-field" style="width: 140px">
-              <label class="ui-field__label">端口</label>
-              <input
-                v-model.number="form.port"
-                class="ui-input"
-                type="number"
-                min="1"
-                max="65535"
-                :disabled="!proxyOn"
-                placeholder="1080"
-              />
-            </div>
-          </div>
 
-          <!-- 2) 账号密码 -->
-          <div class="ui-field" style="margin-top: 10px">
-            <AppSwitch v-model="form.authOn" :disabled="!proxyOn">
-              代理需要账号密码
-            </AppSwitch>
-            <small class="ui-help">
-              打开后下面两项才生效。多数本地代理（ clash / v2ray 等）不需要账号密码。
-            </small>
-          </div>
-          <div v-if="form.authOn === 1" style="display: flex; gap: 12px; flex-wrap: wrap">
-            <div class="ui-field" style="width: 220px">
-              <label class="ui-field__label">代理用户名</label>
-              <input v-model="form.user" class="ui-input" placeholder="用户名" spellcheck="false" />
+            <!-- 地址与端口同一行 -->
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start">
+              <div class="ui-field" style="flex: 1 1 220px">
+                <label class="ui-field__label">代理地址</label>
+                <input
+                  v-model="form.host"
+                  class="ui-input"
+                  placeholder="例如 127.0.0.1 或 10.10.0.8"
+                  spellcheck="false"
+                />
+                <small class="ui-help">可以带 scheme（socks5://…）或端口，会自动拆开。</small>
+              </div>
+              <div class="ui-field" style="width: 120px">
+                <label class="ui-field__label">端口</label>
+                <input
+                  v-model.number="form.port"
+                  class="ui-input"
+                  type="number"
+                  min="1"
+                  max="65535"
+                  placeholder="1080"
+                />
+              </div>
             </div>
-            <div class="ui-field" style="width: 220px">
-              <label class="ui-field__label">代理密码</label>
-              <input
-                v-model="form.pwd"
-                class="ui-input"
-                type="password"
-                :placeholder="form.pwdSet ? '已配置，留空表示不修改' : '密码'"
-                spellcheck="false"
-              />
+
+            <!-- 账号密码 -->
+            <div class="ui-field" style="margin-top: 10px">
+              <AppSwitch v-model="form.authOn" :disabled="!proxyOn">
+                代理需要账号密码
+              </AppSwitch>
+              <small class="ui-help">
+                打开后下面两项才生效。多数本地代理（ clash / v2ray 等）不需要账号密码。
+              </small>
+            </div>
+            <div v-if="form.authOn === 1" style="display: flex; gap: 12px; flex-wrap: wrap">
+              <div class="ui-field" style="flex: 1 1 180px">
+                <label class="ui-field__label">代理用户名</label>
+                <input v-model="form.user" class="ui-input" placeholder="用户名" spellcheck="false" />
+              </div>
+              <div class="ui-field" style="flex: 1 1 180px">
+                <label class="ui-field__label">代理密码</label>
+                <input
+                  v-model="form.pwd"
+                  class="ui-input"
+                  type="password"
+                  :placeholder="form.pwdSet ? '已配置，留空表示不修改' : '密码'"
+                  spellcheck="false"
+                />
+              </div>
+            </div>
+
+            <!-- 按钮放在代理地址卡片里：它操作的正是上面这些输入框。 -->
+            <div class="proxy-actions">
+              <button class="ui-btn ui-btn--primary" type="button" :disabled="saving || testing" @click="save">
+                保存配置
+              </button>
+              <button class="ui-btn" type="button" :disabled="saving || testing" @click="test">
+                测试代理
+              </button>
+              <span class="ui-help" style="margin-top: 0">
+                {{ proxyOn ? '保存前会先做连通性测试' : '无代理：不测试，直接保存并关闭作用范围' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2) 作用范围（四个开关各自即时提交） -->
+        <div class="ui-card">
+          <div class="ui-card__header"><h4>作用范围</h4></div>
+          <div class="ui-card__body">
+            <div
+              v-for="(s, i) in SCOPES"
+              :key="s.key"
+              class="ui-field"
+              :style="{ marginBottom: i === SCOPES.length - 1 ? '0' : '10px' }"
+            >
+              <AppSwitch
+                :model-value="form[s.key]"
+                :disabled="scopeDisabled(s.key)"
+                @update:model-value="(v) => toggleScope(s.key, v)"
+              >
+                {{ s.label }}
+              </AppSwitch>
+              <small class="ui-help">
+                <template v-if="s.key === 'useRelay' && !relayAllowed">仅授权账号可用。</template>
+                <template v-else>{{ s.desc }}</template>
+              </small>
+            </div>
+
+            <div class="ui-alert ui-alert--info" style="margin-top: 14px">
+              <div>
+                <span v-if="scopeBusy === 'useEpg' || scopeBusy === 'useSrc' || scopeBusy === 'useUp' || scopeBusy === 'useRelay'">
+                  <span class="ui-spinner" />正在保存开关…
+                </span>
+                <span v-else>
+                  已启用 <strong>{{ scopeCount }}</strong> 项功能走代理
+                  <template v-if="!savedProxyOn">（保存代理协议与地址后，开关才可操作）</template>
+                </span>
+              </div>
+              <small class="ui-help" style="display: block; margin-top: 4px">
+                每个开关拨一下就单独生效，不需要再点「保存配置」；四个都可以关着
+                （那就是暂时不用代理）。
+              </small>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 3) 作用范围 -->
-      <div class="ui-card">
-        <div class="ui-card__header"><h4>作用范围</h4></div>
-        <div class="ui-card__body">
-          <div class="ui-field" style="margin-bottom: 8px">
-            <AppSwitch v-model="form.useEpg" :disabled="!proxyOn">EPG 更新</AppSwitch>
-            <small class="ui-help">定时任务与手动「更新全部」抓取 EPG 源时走代理。</small>
-          </div>
-          <div class="ui-field" style="margin-bottom: 8px">
-            <AppSwitch v-model="form.useSrc" :disabled="!proxyOn">频道源更新</AppSwitch>
-            <small class="ui-help">定时更新、手动更新列表、新增频道源时的抓取走代理。</small>
-          </div>
-          <div class="ui-field" style="margin-bottom: 8px">
-            <AppSwitch v-model="form.useUp" :disabled="!proxyOn">在线升级</AppSwitch>
-            <small class="ui-help">检查更新与下载升级包走代理（访问 GitHub）。默认勾选。</small>
-          </div>
-          <div class="ui-field" style="margin-bottom: 8px">
-            <AppSwitch v-model="form.useRelay" :disabled="!relayUsable">中转取流</AppSwitch>
-            <small class="ui-help">
-              <template v-if="!relayAllowed">仅授权账号可用。</template>
-              <template v-else-if="form.type !== 'socks5'">中转取流只支持 SOCKS5 代理，请先把类型改成 SOCKS5。</template>
-              <template v-else>服务器替播放器取流时经 SOCKS5 代理连源站。</template>
-            </small>
-          </div>
-
-          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px">
-            <button class="ui-btn ui-btn--primary" type="button" :disabled="saving || testing" @click="save">
-              保存配置
-            </button>
-            <button class="ui-btn" type="button" :disabled="saving || testing" @click="test">
-              只测试连接
-            </button>
-            <span v-if="proxyOn" class="ui-help" style="margin-top: 0">
-              已启用 {{ scopeCount }} 项功能走代理
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 4) 最近一次测试结论 -->
+      <!-- 3) 最近一次测试结论 -->
       <div v-if="lastTest" class="ui-card">
         <div class="ui-card__header"><h4>连通性测试</h4></div>
         <div class="ui-card__body">
@@ -307,3 +415,88 @@ function onTypeChange() {
     </template>
   </div>
 </template>
+
+<style scoped>
+/* 两张卡片左右并排；窄屏（放不下 2×320px）自动回落成上下排列。
+   不用 align-items: start —— 那会让两张卡片各自按内容收缩、底部参差；
+   默认的 stretch 让两卡**等高且顶部对齐**。 */
+.proxy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+/* 卡片内部纵向铺开，配合上面的 stretch 把两卡拉到等高。 */
+.proxy-grid > .ui-card {
+  display: flex;
+  flex-direction: column;
+}
+/* 再显式清一次相邻卡片的 margin-top：双保险，不依赖全局规则将来是否改动。 */
+.proxy-grid > .ui-card + .ui-card {
+  margin-top: 0;
+}
+.proxy-grid > .ui-card > .ui-card__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.proxy-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 14px;
+}
+
+/* 协议单选卡：三个横排。**不画浏览器默认的小圆圈** —— 三个等宽卡片
+   已经把"这是一个单选组"说清楚了，再加一排圆圈只是噪音。
+   选中态靠边框 + 底色 + 字重表达；原生 input 只留无障碍可达性
+   （视觉隐藏但仍可聚焦、仍可用键盘选中）。 */
+.proxy-types {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.proxy-type {
+  position: relative;
+  display: block;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color .15s ease, background .15s ease;
+}
+.proxy-type:hover {
+  border-color: var(--foreground);
+}
+.proxy-type--on {
+  border-color: var(--foreground);
+  background: color-mix(in oklab, var(--foreground) 8%, transparent);
+}
+.proxy-type:focus-within {
+  outline: 2px solid var(--foreground);
+  outline-offset: 1px;
+}
+.proxy-type__radio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  margin: 0;
+  pointer-events: none;
+}
+.proxy-type__body {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+  min-width: 0;
+}
+.proxy-type__label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.proxy-type__hint {
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+}
+</style>

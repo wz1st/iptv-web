@@ -250,8 +250,11 @@ export const PROXY_ROUTES = {
   // 只测不存：连代理 + 访问 GitHub/Google，失败时 data.failType 区分
   // dial（代理连不通）与 overseas（能连但出不去）
   test: '/api/proxy/test',
-  // 保存：服务端内部会再测一次，不通过一律不落盘
+  // 保存连接参数（协议/地址/端口/账密）：有代理时服务端内部会再测一次，
+  // 不通过一律不落盘；选「无代理」时跳过测试直接存。**不带**作用范围开关。
   save: '/api/proxy/save',
+  // 单独改一个作用范围开关（useEpg/useSrc/useUp/useRelay），拨一下即生效
+  scope: '/api/proxy/scope',
 }
 
 /** 只有一个动作的资源：端点即动作（补上动作名后统一两段式） */
