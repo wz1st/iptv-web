@@ -377,7 +377,9 @@ async function checkAndUpgradeBase() {
   if (baseBusy.value) return
   baseBusy.value = true
   try {
-    const res = await submitAction(A.checkBase, {})
+    // noLoading：这条链路要走几分钟（下载远端基底），按钮上已经有转圈，
+    // 再叠一层全屏遮罩只会把用户刚点的那个按钮整个盖住。
+    const res = await submitAction(A.checkBase, {}, { noLoading: true })
     if (res?.code !== 1) return
     const c = res.data || {}
     if (!c.remote) {
@@ -394,7 +396,7 @@ async function checkAndUpgradeBase() {
       { okText: '在线升级', okVariant: 'danger' }
     )
     if (!ok) return
-    await submitAction(A.upgradeBase, {}, { reload: load })
+    await submitAction(A.upgradeBase, {}, { reload: load, noLoading: true })
   } finally {
     baseBusy.value = false
   }

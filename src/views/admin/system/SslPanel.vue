@@ -343,31 +343,6 @@ const certDir = computed(() => data.value?.certDir || '/config/cert')
                       <td>{{ sanText }}</td>
                     </tr>
                     <tr>
-                      <th>序列号</th>
-                      <td>{{ info.serial }}</td>
-                    </tr>
-                    <tr>
-                      <th>签名算法</th>
-                      <td>{{ info.sigAlg }}</td>
-                    </tr>
-                    <tr>
-                      <th>密钥</th>
-                      <td>{{ info.keyType || '未知' }}</td>
-                    </tr>
-                    <tr>
-                      <th>证书链</th>
-                      <td>
-                        {{ info.chainLen }} 张
-                        <small v-if="info.chainLen < 2" class="ui-help">
-                          （只有叶子证书。部分客户端要求带中间证书，收到"证书链不完整"就把它补进来）
-                        </small>
-                      </td>
-                    </tr>
-                    <tr>
-                      <th>SHA-256 指纹</th>
-                      <td style="word-break: break-all">{{ info.fingerprint }}</td>
-                    </tr>
-                    <tr>
                       <th>私钥</th>
                       <td>
                         <strong :style="{ color: keyState.tone }">{{ keyState.text }}</strong>
@@ -440,10 +415,6 @@ const certDir = computed(() => data.value?.certDir || '/config/cert')
                 accept=".key,.pem,.txt"
                 @change="onKeyFile"
               />
-              <small class="ui-help">
-                两种方式都支持：<strong>选择文件</strong>（内容会自动填进上面的输入框）或<strong>直接粘贴</strong>。
-                私钥出于安全考虑<strong>不会回显</strong>，框里留空表示保持服务器上已有的私钥不变。
-              </small>
             </div>
           </div>
 
@@ -460,6 +431,11 @@ const certDir = computed(() => data.value?.certDir || '/config/cert')
               清除证书
             </button>
           </div>
+
+          <small class="ui-help" style="display: block; margin-top: 8px">
+            两种方式都支持：<strong>选择文件</strong>（内容会自动填进上面的输入框）或<strong>直接粘贴</strong>。
+            私钥出于安全考虑<strong>不会回显</strong>，框里留空表示保持服务器上已有的私钥不变。
+          </small>
         </div>
       </div>
     </template>

@@ -429,8 +429,12 @@ h1, h2, h3, h4, h5, h6 {
 /* ---------- 按钮加载态 ---------- */
 /* 用法：按钮置 :disabled 的同时塞一个 <span class="ui-btn__spinner" />。
    覆盖层用按钮自己的背景色（background: inherit 取的是父元素即按钮的计算值）
-   盖住文字，中间一个转圈；转圈色不随文字色，避免被置灰样式一起冲淡。 */
+   盖住文字，中间一个转圈。
+   加载态单独把置灰调淡（:has 只认带转圈的按钮，普通 disabled 不受影响）：
+   父级 opacity 会连带把转圈一起冲淡，所以这里反而要留够对比，
+   转圈的深色也往上提，避免"淡灰底 + 淡灰圈"糊成一团。 */
 .ui-btn { position: relative; }
+.ui-btn:has(> .ui-btn__spinner):disabled { opacity: .72; }
 .ui-btn__spinner {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
@@ -441,8 +445,8 @@ h1, h2, h3, h4, h5, h6 {
 .ui-btn__spinner::before {
   content: "";
   width: 15px; height: 15px; border-radius: 50%;
-  border: 2px solid oklab(0% 0 0 / 0.25);
-  border-top-color: oklab(0% 0 0 / 0.75);
+  border: 2px solid oklab(0% 0 0 / 0.22);
+  border-top-color: oklab(0% 0 0 / 0.95);
   animation: ui-spin 0.7s linear infinite;
 }
 

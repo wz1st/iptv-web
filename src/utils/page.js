@@ -27,8 +27,10 @@ export function usePageData(loader, initialQuery = {}) {
 }
 
 // 提交动作 —— 一个动作一条路由，请求体是 JSON。
+// opts.noLoading：调用方自己有按钮级 loading（如客户端「在线升级基底」那个几分钟的
+// 下载），再叠一层全屏遮罩只会挡住用户刚点的那个按钮 —— 这种场景传 true 关掉。
 export async function submitAction(url, body = {}, opts = {}) {
-  loadingShow()
+  if (!opts.noLoading) loadingShow()
   try {
     const res = await post(url, body)
     if (!opts.silent) displayResult(res)
@@ -40,7 +42,7 @@ export async function submitAction(url, body = {}, opts = {}) {
     if (!opts.silent) notify(e?.message || '提交失败', 'danger')
     return { code: 0, msg: e?.message || '提交失败', type: 'danger' }
   } finally {
-    loadingHide()
+    if (!opts.noLoading) loadingHide()
   }
 }
 
