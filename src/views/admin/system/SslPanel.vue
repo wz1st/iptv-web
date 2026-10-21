@@ -256,102 +256,195 @@ const certDir = computed(() => data.value?.certDir || '/config/cert')
         {{ data.warning }}
       </div>
 
-      <!-- 1) 开关 -->
-      <div class="ui-card">
-        <div class="ui-card__header"><h4>HTTPS 开关</h4></div>
-        <div class="ui-card__body">
-          <div class="ui-field" style="margin-bottom: 10px">
-            <AppSwitch v-model="form.enable" @change="switchEnable">
-              开启 HTTPS（监听 {{ port }} 端口）
-            </AppSwitch>
+      <!-- 第一行：HTTPS 开关 与 证书信息 左右并排；
+           证书与私钥（最常操作的输入区）放下面通栏。 -->
+      <div class="ui-grid ui-grid--2" style="align-items: start; margin-bottom: 16px">
+        <!-- 1) 开关 -->
+        <div class="ui-card">
+          <div class="ui-card__header"><h4>HTTPS 开关</h4></div>
+          <div class="ui-card__body">
+            <div class="ui-field" style="margin-bottom: 10px">
+              <AppSwitch v-model="form.enable" @change="switchEnable">
+                开启 HTTPS（监听 {{ port }} 端口）
+              </AppSwitch>
+              <small class="ui-help">
+                开启后 nginx 同时监听 80 与 {{ port }}，两个端口访问的是同一个站点；
+                APK 与浏览器走 HTTPS 就不会再出现"insecure connection"提示。
+              </small>
+            </div>
+
+            <div class="ui-field" style="margin-bottom: 10px">
+              <AppSwitch
+                v-model="form.forceRedirect"
+                :disabled="form.enable !== 1"
+                @change="switchRedirect"
+              >
+                80 强制跳转到 HTTPS
+              </AppSwitch>
+              <small class="ui-help">
+                打开后 80 端口的访问会 301 到 HTTPS（环回地址 127.0.0.1 例外，容器健康检查要用）。
+                它从属于上面的 HTTPS 开关 —— HTTPS 关着时打开会把站点锁在门外，所以这里禁用了。
+              </small>
+            </div>
+
+            <div class="ui-field" style="max-width: 420px; margin-bottom: 6px">
+              <label class="ui-field__label">监听端口</label>
+              <input class="ui-input" type="text" :value="port" disabled />
+              <small class="ui-help">
+                改端口要同时改 config.yml 与容器的端口映射（docker run -p 443:443 / compose 的
+                ports），所以这里做成只读；默认 443。
+              </small>
+            </div>
+
             <small class="ui-help">
-              开启后 nginx 同时监听 80 与 {{ port }}，两个端口访问的是同一个站点；
-              APK 与浏览器走 HTTPS 就不会再出现"insecure connection"提示。
+              nginx {{ data?.nginxVersion || '版本未知' }}<template v-if="data?.http2">，已启用 HTTP/2</template>
+              ｜ 端口状态：{{ data?.listening ? '正在监听' : '未监听' }}
             </small>
           </div>
+        </div>
 
-          <div class="ui-field" style="margin-bottom: 10px">
-            <AppSwitch
-              v-model="form.forceRedirect"
-              :disabled="form.enable !== 1"
-              @change="switchRedirect"
-            >
-              80 强制跳转到 HTTPS
-            </AppSwitch>
-            <small class="ui-help">
-              打开后 80 端口的访问会 301 到 HTTPS（环回地址 127.0.0.1 例外，容器健康检查要用）。
-              它从属于上面的 HTTPS 开关 —— HTTPS 关着时打开会把站点锁在门外，所以这里禁用了。
-            </small>
+        <!-- 3) 证书信息（原第 3 块，移到开关右侧） -->
+        <div class="ui-card">
+          <div class="ui-card__header"><h4>证书信息</h4></div>
+          <div class="ui-card__body">
+            <div v-if="!info.ok" class="ui-alert ui-alert--warning">
+              {{ info.error || '还没有上传证书' }}
+            </div>
+
+            <template v-else>
+              <div class="ui-table-wrap">
+                <table class="ui-table ui-table--bordered">
+                  <tbody>
+                    <tr>
+                      <th style="width: 140px">主体</th>
+                      <td>{{ info.subject }}</td>
+                    </tr>
+                    <tr>
+                      <th>签发者</th>
+                      <td>
+                        {{ info.issuer }}
+                        <template v-if="info.selfSigned">
+                          <br />
+                          <small class="ui-help">
+                            自签证书：浏览器与播放器会提示"不受信任"，正式对外请换受信任 CA 签发的证书。
+                          </small>
+                        </template>
+                      </td>
+                    </tr>
+                    <tr>
+                      <th>有效期</th>
+                      <td>
+                        {{ info.notBefore }} ~ {{ info.notAfter }}
+                        <strong :style="{ color: daysTone }">（{{ daysText }}）</strong>
+                      </td>
+                    </tr>
+                    <tr>
+                      <th>域名 / IP</th>
+                      <td>{{ sanText }}</td>
+                    </tr>
+                    <tr>
+                      <th>序列号</th>
+                      <td>{{ info.serial }}</td>
+                    </tr>
+                    <tr>
+                      <th>签名算法</th>
+                      <td>{{ info.sigAlg }}</td>
+                    </tr>
+                    <tr>
+                      <th>密钥</th>
+                      <td>{{ info.keyType || '未知' }}</td>
+                    </tr>
+                    <tr>
+                      <th>证书链</th>
+                      <td>
+                        {{ info.chainLen }} 张
+                        <small v-if="info.chainLen < 2" class="ui-help">
+                          （只有叶子证书。部分客户端要求带中间证书，收到"证书链不完整"就把它补进来）
+                        </small>
+                      </td>
+                    </tr>
+                    <tr>
+                      <th>SHA-256 指纹</th>
+                      <td style="word-break: break-all">{{ info.fingerprint }}</td>
+                    </tr>
+                    <tr>
+                      <th>私钥</th>
+                      <td>
+                        <strong :style="{ color: keyState.tone }">{{ keyState.text }}</strong>
+                        <small v-if="info.keyError" class="ui-help">{{ info.keyError }}</small>
+                      </td>
+                    </tr>
+                    <tr>
+                      <th>文件</th>
+                      <td>
+                        证书 {{ data?.certSize || '—' }}
+                        <span v-if="data?.certModTime">（{{ data.certModTime }}）</span>
+                        ／ 私钥 {{ data?.keySize || '—' }}
+                        <span v-if="data?.keyModTime">（{{ data.keyModTime }}）</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </template>
           </div>
-
-          <div class="ui-field" style="max-width: 420px; margin-bottom: 6px">
-            <label class="ui-field__label">监听端口</label>
-            <input class="ui-input" type="text" :value="port" disabled />
-            <small class="ui-help">
-              改端口要同时改 config.yml 与容器的端口映射（docker run -p 443:443 / compose 的
-              ports），所以这里做成只读；默认 443。
-            </small>
-          </div>
-
-          <small class="ui-help">
-            nginx {{ data?.nginxVersion || '版本未知' }}<template v-if="data?.http2">，已启用 HTTP/2</template>
-            ｜ 端口状态：{{ data?.listening ? '正在监听' : '未监听' }}
-          </small>
         </div>
       </div>
 
-      <!-- 2) 证书与私钥 -->
+      <!-- 2) 证书与私钥（通栏；两个输入框左右并排） -->
       <div class="ui-card">
         <div class="ui-card__header"><h4>证书与私钥</h4></div>
         <div class="ui-card__body">
-          <div class="ui-field">
-            <label class="ui-field__label">证书（PEM 文本）</label>
-            <textarea
-              v-model="form.certPem"
-              class="ui-textarea"
-              rows="7"
-              spellcheck="false"
-              placeholder="-----BEGIN CERTIFICATE-----"
-            />
-            <div style="margin-top: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
-              <button class="ui-btn ui-btn--sm" type="button" @click="pickCert">选择证书文件…</button>
-              <span v-if="certName" class="ui-help" style="margin-top: 0">来源：{{ certName }}</span>
+          <div class="ui-grid ui-grid--2" style="align-items: start; margin-bottom: 4px">
+            <div class="ui-field" style="margin-bottom: 0">
+              <label class="ui-field__label">证书（PEM 文本）</label>
+              <textarea
+                v-model="form.certPem"
+                class="ui-textarea"
+                rows="7"
+                spellcheck="false"
+                placeholder="-----BEGIN CERTIFICATE-----"
+              />
+              <div style="margin-top: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+                <button class="ui-btn ui-btn--sm" type="button" @click="pickCert">选择证书文件…</button>
+                <span v-if="certName" class="ui-help" style="margin-top: 0">来源：{{ certName }}</span>
+              </div>
+              <input
+                ref="certPicker"
+                type="file"
+                style="display: none"
+                accept=".crt,.cer,.pem,.txt"
+                @change="onCertFile"
+              />
             </div>
-            <input
-              ref="certPicker"
-              type="file"
-              style="display: none"
-              accept=".crt,.cer,.pem,.txt"
-              @change="onCertFile"
-            />
-          </div>
 
-          <div class="ui-field">
-            <label class="ui-field__label">私钥（PEM 文本）</label>
-            <textarea
-              v-model="form.keyPem"
-              class="ui-textarea"
-              rows="7"
-              spellcheck="false"
-              :placeholder="data?.keyConfigured
-                ? '已经配置了私钥。留空表示保持不变；要更换请选择文件或粘贴新的私钥内容。'
-                : '-----BEGIN PRIVATE KEY-----'"
-            />
-            <div style="margin-top: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
-              <button class="ui-btn ui-btn--sm" type="button" @click="pickKey">选择私钥文件…</button>
-              <span v-if="keyName" class="ui-help" style="margin-top: 0">来源：{{ keyName }}</span>
+            <div class="ui-field" style="margin-bottom: 0">
+              <label class="ui-field__label">私钥（PEM 文本）</label>
+              <textarea
+                v-model="form.keyPem"
+                class="ui-textarea"
+                rows="7"
+                spellcheck="false"
+                :placeholder="data?.keyConfigured
+                  ? '已经配置了私钥。留空表示保持不变；要更换请选择文件或粘贴新的私钥内容。'
+                  : '-----BEGIN PRIVATE KEY-----'"
+              />
+              <div style="margin-top: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+                <button class="ui-btn ui-btn--sm" type="button" @click="pickKey">选择私钥文件…</button>
+                <span v-if="keyName" class="ui-help" style="margin-top: 0">来源：{{ keyName }}</span>
+              </div>
+              <input
+                ref="keyPicker"
+                type="file"
+                style="display: none"
+                accept=".key,.pem,.txt"
+                @change="onKeyFile"
+              />
+              <small class="ui-help">
+                两种方式都支持：<strong>选择文件</strong>（内容会自动填进上面的输入框）或<strong>直接粘贴</strong>。
+                私钥出于安全考虑<strong>不会回显</strong>，框里留空表示保持服务器上已有的私钥不变。
+              </small>
             </div>
-            <input
-              ref="keyPicker"
-              type="file"
-              style="display: none"
-              accept=".key,.pem,.txt"
-              @change="onKeyFile"
-            />
-            <small class="ui-help">
-              两种方式都支持：<strong>选择文件</strong>（内容会自动填进上面的输入框）或<strong>直接粘贴</strong>。
-              私钥出于安全考虑<strong>不会回显</strong>，框里留空表示保持服务器上已有的私钥不变。
-            </small>
           </div>
 
           <div style="display: flex; gap: 8px; flex-wrap: wrap">
@@ -367,93 +460,6 @@ const certDir = computed(() => data.value?.certDir || '/config/cert')
               清除证书
             </button>
           </div>
-        </div>
-      </div>
-
-      <!-- 3) 证书信息 -->
-      <div class="ui-card">
-        <div class="ui-card__header"><h4>证书信息</h4></div>
-        <div class="ui-card__body">
-          <div v-if="!info.ok" class="ui-alert ui-alert--warning">
-            {{ info.error || '还没有上传证书' }}
-          </div>
-
-          <template v-else>
-            <div class="ui-table-wrap">
-              <table class="ui-table ui-table--bordered">
-                <tbody>
-                  <tr>
-                    <th style="width: 140px">主体</th>
-                    <td>{{ info.subject }}</td>
-                  </tr>
-                  <tr>
-                    <th>签发者</th>
-                    <td>
-                      {{ info.issuer }}
-                      <template v-if="info.selfSigned">
-                        <br />
-                        <small class="ui-help">
-                          自签证书：浏览器与播放器会提示"不受信任"，正式对外请换受信任 CA 签发的证书。
-                        </small>
-                      </template>
-                    </td>
-                  </tr>
-                  <tr>
-                    <th>有效期</th>
-                    <td>
-                      {{ info.notBefore }} ~ {{ info.notAfter }}
-                      <strong :style="{ color: daysTone }">（{{ daysText }}）</strong>
-                    </td>
-                  </tr>
-                  <tr>
-                    <th>域名 / IP</th>
-                    <td>{{ sanText }}</td>
-                  </tr>
-                  <tr>
-                    <th>序列号</th>
-                    <td>{{ info.serial }}</td>
-                  </tr>
-                  <tr>
-                    <th>签名算法</th>
-                    <td>{{ info.sigAlg }}</td>
-                  </tr>
-                  <tr>
-                    <th>密钥</th>
-                    <td>{{ info.keyType || '未知' }}</td>
-                  </tr>
-                  <tr>
-                    <th>证书链</th>
-                    <td>
-                      {{ info.chainLen }} 张
-                      <small v-if="info.chainLen < 2" class="ui-help">
-                        （只有叶子证书。部分客户端要求带中间证书，收到"证书链不完整"就把它补进来）
-                      </small>
-                    </td>
-                  </tr>
-                  <tr>
-                    <th>SHA-256 指纹</th>
-                    <td style="word-break: break-all">{{ info.fingerprint }}</td>
-                  </tr>
-                  <tr>
-                    <th>私钥</th>
-                    <td>
-                      <strong :style="{ color: keyState.tone }">{{ keyState.text }}</strong>
-                      <small v-if="info.keyError" class="ui-help">{{ info.keyError }}</small>
-                    </td>
-                  </tr>
-                  <tr>
-                    <th>文件</th>
-                    <td>
-                      证书 {{ data?.certSize || '—' }}
-                      <span v-if="data?.certModTime">（{{ data.certModTime }}）</span>
-                      ／ 私钥 {{ data?.keySize || '—' }}
-                      <span v-if="data?.keyModTime">（{{ data.keyModTime }}）</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </template>
         </div>
       </div>
     </template>

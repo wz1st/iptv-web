@@ -173,14 +173,15 @@ async function detectBaseUpdate() {
     const res = await submitAction(API.adminClientMyTVCheckBase, {}, { silent: true })
     c = res?.data
     if (!c) { notify(res?.msg || '检测更新失败：GitHub 直连与国内加速都不通', 'danger', 4000); return }
+
+    const route = c.route ? `，经 ${c.route}` : ''
+    if (!c.remote) { notify(`远端还没有基底发布（本地 ${c.local || '-'}）`, 'warning', 3000); return }
+    if (!c.hasUpdate) { notify(`已是最新（本地 ${c.local || '-'}，远端 ${c.remote}）${route}`, 'success', 3000); return }
+    // 按钮的 loading 一路盖到升级结束：确认弹窗那一下也别放用户回去重复点
+    await upgradeBase(c)
   } finally {
     checking.value = false
   }
-
-  const route = c.route ? `，经 ${c.route}` : ''
-  if (!c.remote) { notify(`远端还没有基底发布（本地 ${c.local || '-'}）`, 'warning', 3000); return }
-  if (!c.hasUpdate) { notify(`已是最新（本地 ${c.local || '-'}，远端 ${c.remote}）${route}`, 'success', 3000); return }
-  await upgradeBase(c)
 }
 
 /* ---------------- 编译基底：在线升级 ----------------
@@ -334,7 +335,8 @@ onBeforeUnmount(stopPolling)
               :disabled="checking || upgrading"
               @click="detectBaseUpdate"
             >
-              {{ checking ? '检测中…' : upgrading ? '升级中…' : '检测更新' }}
+              检测更新
+              <span v-if="checking || upgrading" class="ui-btn__spinner" />
             </button>
             <button
               class="ui-btn"

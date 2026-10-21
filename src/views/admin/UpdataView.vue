@@ -11,6 +11,7 @@ import { markUpgradeStarted } from '@/utils/upgrade'
 const version = ref('')       // 管理系统（api，与前端同版本号）
 const engineVersion = ref('') // 引擎
 const loading = ref(true)
+const busyKind = ref('')      // 正在走「检测→下载→升级」哪条链路：'' / 'web' / 'engine'
 
 async function load() {
   loading.value = true
@@ -33,7 +34,9 @@ const KINDS = {
 }
 
 async function runUpgrade(kind) {
+  if (busyKind.value) return
   const ep = KINDS[kind]
+  busyKind.value = kind
   try {
     const check = await post(ep.check)
     if (check?.code === 2) {
@@ -69,6 +72,8 @@ async function runUpgrade(kind) {
     notify(up?.msg || '已触发更新', up?.type || 'info', 3000)
   } catch {
     notify(`${ep.name}更新操作失败`, 'danger', 1500)
+  } finally {
+    busyKind.value = ''
   }
 }
 </script>
@@ -81,7 +86,15 @@ async function runUpgrade(kind) {
         <div class="ui-inline">
           <span class="ui-field__label" style="margin: 0">当前版本:</span>
           <span class="ui-kv"><span class="ui-kv__v ui-kv__v--mono">{{ loading ? '读取中…' : (version || '-') }}</span></span>
-          <button class="ui-btn ui-btn--primary" type="button" @click="runUpgrade('web')">检测更新</button>
+          <button
+            class="ui-btn ui-btn--primary"
+            type="button"
+            :disabled="busyKind === 'web'"
+            @click="runUpgrade('web')"
+          >
+            检测更新
+            <span v-if="busyKind === 'web'" class="ui-btn__spinner" />
+          </button>
         </div>
       </div>
     </div>
@@ -92,7 +105,15 @@ async function runUpgrade(kind) {
         <div class="ui-inline">
           <span class="ui-field__label" style="margin: 0">当前版本:</span>
           <span class="ui-kv"><span class="ui-kv__v ui-kv__v--mono">{{ loading ? '读取中…' : (engineVersion || '-') }}</span></span>
-          <button class="ui-btn ui-btn--primary" type="button" @click="runUpgrade('engine')">检测更新</button>
+          <button
+            class="ui-btn ui-btn--primary"
+            type="button"
+            :disabled="busyKind === 'engine'"
+            @click="runUpgrade('engine')"
+          >
+            检测更新
+            <span v-if="busyKind === 'engine'" class="ui-btn__spinner" />
+          </button>
         </div>
       </div>
     </div>

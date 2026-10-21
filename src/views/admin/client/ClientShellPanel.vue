@@ -63,6 +63,7 @@ const newApkName = ref('')
 const baseVersion = ref('')
 const basePkg = ref('')
 const baseInput = ref(null)
+const baseBusy = ref(false)   // 在线升级基底：查询+确认+替换全程置灰转圈
 
 const iconUrl = ref('')
 const bjList = ref([])          // [{ name, url }]
@@ -373,24 +374,30 @@ async function onBasePick(e) {
 
 /** 在线查 + 升级合成一个入口：先查，有新版才问要不要升。 */
 async function checkAndUpgradeBase() {
-  const res = await submitAction(A.checkBase, {})
-  if (res?.code !== 1) return
-  const c = res.data || {}
-  if (!c.remote) {
-    notify(`远端还没有基底发布（本地 ${c.local || '-'}）`, 'warning', 3000)
-    return
+  if (baseBusy.value) return
+  baseBusy.value = true
+  try {
+    const res = await submitAction(A.checkBase, {})
+    if (res?.code !== 1) return
+    const c = res.data || {}
+    if (!c.remote) {
+      notify(`远端还没有基底发布（本地 ${c.local || '-'}）`, 'warning', 3000)
+      return
+    }
+    if (!c.hasUpdate) {
+      notify(res.msg || `当前已是最新基底版本 ${c.local}`, 'success', 3000)
+      return
+    }
+    const ok = await confirm(
+      res.msg || `确定把编译基底从 ${c.local || '当前版本'} 升级到 ${c.remote} 吗？` +
+        '升级后当前待发布包会作废，需要重新编译并发布。',
+      { okText: '在线升级', okVariant: 'danger' }
+    )
+    if (!ok) return
+    await submitAction(A.upgradeBase, {}, { reload: load })
+  } finally {
+    baseBusy.value = false
   }
-  if (!c.hasUpdate) {
-    notify(res.msg || `当前已是最新基底版本 ${c.local}`, 'success', 3000)
-    return
-  }
-  const ok = await confirm(
-    res.msg || `确定把编译基底从 ${c.local || '当前版本'} 升级到 ${c.remote} 吗？` +
-      '升级后当前待发布包会作废，需要重新编译并发布。',
-    { okText: '在线升级', okVariant: 'danger' }
-  )
-  if (!ok) return
-  await submitAction(A.upgradeBase, {}, { reload: load })
 }
 
 /* ---------------- 编译：只产出「待发布」包，线上一个字节都不动 ---------------- */
@@ -606,7 +613,10 @@ onBeforeUnmount(stopPolling)
                 <input ref="baseInput" type="file" accept=".apk,application/vnd.android.package-archive"
                   style="display: none" @change="onBasePick" />
               </label>
-              <button class="ui-btn" type="button" @click="checkAndUpgradeBase">在线升级基底</button>
+              <button class="ui-btn" type="button" :disabled="baseBusy" @click="checkAndUpgradeBase">
+                在线升级基底
+                <span v-if="baseBusy" class="ui-btn__spinner" />
+              </button>
             </div>
             <small class="ui-help">
               提示：只接受包名 <code>{{ basePkg || 'xyz.qingh.qhtv' }}</code> 的基包 ——
