@@ -4,9 +4,9 @@ import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { post } from '@/api/http'
 import { submitAction } from '@/utils/page'
 import { notify } from '@/utils/feedback'
-import { confirm } from '@/utils/confirm'
+import { confirm, notifyBox } from '@/utils/confirm'
 import { API, ENGINE_ROUTES } from '@/api/endpoints'
-import { markUpgradeStarted } from '@/utils/upgrade'
+import { markUpgradeStarted, abortUpgrade } from '@/utils/upgrade'
 import AppSwitch from '@/components/AppSwitch.vue'
 import AppModal from '@/components/AppModal.vue'
 
@@ -288,24 +288,46 @@ async function checkProxy() {
 
 async function checkEngineUpdate() {
   const res = await post(API.adminUpdataCheckEngine)
-  if (res?.code === 1) {
-    if (!(await confirm(`${res.msg}，是否下载？`, { okText: '确认', okVariant: 'danger' }))) return
-    notify('更新下载中', 'info', 1200)
-    const down = await post(API.adminUpdataDownEngine)
-    if (down?.code === 1) {
-      if (!(await confirm(`${down.msg} 下载完成，是否升级？`, { okText: '确认', okVariant: 'danger' }))) return
-      // 与「在线升级」页同一套遮罩：引擎升级同样会重启进程。
-      markUpgradeStarted('engine')
-      const up = await post(API.adminUpdata)
-      notify(up?.msg || '已触发更新', up?.type || 'info', 3000)
-    } else if (down?.code === 2) {
-      // code 2 = 发布位里没有合格的新版本（检测通过、下载时被跳过）：不是故障
-      notify(down.msg || '当前已是最新版本', 'success', 3000)
-    } else {
-      notify(down?.msg || '下载失败', 'danger', 3000)
-    }
-  } else {
-    notify(res?.msg || '检查更新失败', res?.type || 'danger', 3000)
+  if (res?.code !== 1) {
+    // 检查失败是终态（跨大版本要换镜像 / 没合格发布）⇒ 弹窗，不自动消失。
+    if (res?.code === 2) notify(res.msg || '当前已是最新版本', 'success', 3000)
+    else await notifyBox(res?.msg || '检查更新失败', { title: '引擎更新', okText: '知道了', okVariant: 'danger' })
+    return
+  }
+  if (!(await confirm(`${res.msg}，是否下载？`, { okText: '确认', okVariant: 'danger' }))) return
+  notify('更新下载中', 'info', 1200)
+  let down
+  try {
+    down = await post(API.adminUpdataDownEngine)
+  } catch (e) {
+    await notifyBox(e?.message || '下载请求未能完成，请检查网络或代理设置后重试',
+      { title: '引擎下载失败', okText: '知道了', okVariant: 'danger' })
+    return
+  }
+  if (down?.code !== 1) {
+    // code 2 = 发布位里没有合格的新版本（检测通过、下载时被跳过）：不是故障。
+    if (down?.code === 2) notify(down.msg || '当前已是最新版本', 'success', 3000)
+    else await notifyBox(down?.msg || '下载失败，请检查网络或代理设置后重试',
+      { title: '引擎下载失败', okText: '知道了', okVariant: 'danger' })
+    return
+  }
+  if (!(await confirm(`${down.msg} 下载完成，是否升级？`, { okText: '确认', okVariant: 'danger' }))) return
+  // 与「在线升级」页同一套遮罩：引擎升级同样会重启进程。
+  markUpgradeStarted('engine')
+  let up
+  try {
+    up = await post(API.adminUpdata)
+  } catch (e) {
+    // 触发失败要主动撤遮罩，否则用户会盯着一块遮罩等到 15 分钟兜底。
+    abortUpgrade()
+    await notifyBox(e?.message || '升级未能触发，请重试',
+      { title: '引擎升级未触发', okText: '知道了', okVariant: 'danger' })
+    return
+  }
+  if (up?.code !== 1) {
+    abortUpgrade()
+    await notifyBox(up?.msg || '升级未能触发，请重试',
+      { title: '引擎升级未触发', okText: '知道了', okVariant: 'danger' })
   }
 }
 

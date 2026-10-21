@@ -36,9 +36,7 @@ const percent = computed(() => Math.max(0, Math.min(100, Number(s.percent) || 0)
         <small class="ui-help" style="margin-top: 0">{{ percent }}%</small>
 
         <p class="ui-upgrade-note">
-          升级过程中管理系统会重启一次，页面可能短暂断开并自动恢复。<br />
-          在升级完成或失败之前，界面会保持遮罩 —— 这期间任何操作都可能撞上
-          「半个新、半个旧」的运行态。
+          升级过程中管理系统会重启一次，页面可能短暂断开并自动恢复。
         </p>
       </div>
     </div>

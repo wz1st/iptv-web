@@ -84,10 +84,15 @@ const TYPES = [
 ]
 
 // 四个作用范围：key 与后端 dto.OutProxyScopeDto.Key 逐字对齐。
+//
+// useUp 的覆盖面刻意写全：它不只是"管理系统/引擎升级"，客户端三条基底
+// （清和壳、骆驼壳、MyTV）的在线检查与基底下载也走同一条出网链路
+// （都经后端 ghnet/ghTransport），所以这一路开关对它们同样生效 ——
+// 界面上不写清楚，用户会以为"下载 APK 基底"不受这个开关管。
 const SCOPES = [
   { key: 'useEpg', label: 'EPG 更新', desc: '定时任务与手动「更新全部」抓取 EPG 源时走代理。' },
   { key: 'useSrc', label: '频道源更新', desc: '定时更新、手动更新列表、新增频道源时的抓取走代理。' },
-  { key: 'useUp', label: '在线升级', desc: '检查更新与下载升级包走代理（访问 GitHub）。' },
+  { key: 'useUp', label: '在线升级', desc: '管理系统 / 引擎 / 客户端基底（清和壳·骆驼壳·MyTV）的在线检查与升级包下载走代理（访问 GitHub）。' },
   { key: 'useRelay', label: '中转取流', desc: '服务器替播放器取流时经代理连源站（仅 SOCKS5）。' },
 ]
 

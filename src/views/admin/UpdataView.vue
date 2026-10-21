@@ -4,14 +4,24 @@
 import { ref, onMounted } from 'vue'
 import { post } from '@/api/http'
 import { notify } from '@/utils/feedback'
-import { confirm } from '@/utils/confirm'
+import { confirm, notifyBox } from '@/utils/confirm'
 import { API } from '@/api/endpoints'
-import { markUpgradeStarted } from '@/utils/upgrade'
+import { markUpgradeStarted, abortUpgrade } from '@/utils/upgrade'
 
-const version = ref('')       // 管理系统（api，与前端同版本号）
+const version = ref('')       // 管理系统（api，与前端同版本号)
 const engineVersion = ref('') // 引擎
 const loading = ref(true)
 const busyKind = ref('')      // 正在走「检测→下载→升级」哪条链路：'' / 'web' / 'engine'
+
+// 升级链路上的失败一律弹窗，不走右下角自动关闭的 toast。
+//
+// 理由很实际：这一步失败之后**没有后续动作**了 —— 用户不点重试就只能干等着，
+// 而 toast 3~6 秒就消失，等他反应过来读到时已经没了。下载失败尤其致命：
+// 30MB 下到一半失败，用户既不知道下了多少，也不知道该不该重下。
+// 成功/进行中的提示仍然用 toast：那些场景用户本来就有事要做（点确认、等着）。
+async function failBox(title, msg) {
+  await notifyBox(msg, { title, okText: '知道了', okVariant: 'danger' })
+}
 
 async function load() {
   loading.value = true
@@ -44,8 +54,9 @@ async function runUpgrade(kind) {
       return
     }
     if (check?.code !== 1) {
-      // 跨大版本/大改动、发布不完整（缺前端整包）：后端回的是一句「请更新镜像」，弹完就结束。
-      notify(check?.msg || '检查更新失败', check?.type || 'danger', 4000)
+      // 跨大版本/大改动、发布不完整（缺前端整包）：后端回的是一句「请更新镜像」。
+      // 这一步失败用户没有任何后续动作 ⇒ 弹窗，不让他错过。
+      await failBox(`${ep.name}更新`, check?.msg || '检查更新失败')
       return
     }
     if (!(await confirm(`${check.msg}，是否下载？`, { okText: '确认', okVariant: 'danger' }))) return
@@ -53,13 +64,14 @@ async function runUpgrade(kind) {
     notify('更新下载中', 'info', 1200)
     const down = await post(ep.down)
     // code 2 = 发布位里没有合格的新版本（检测通过、下载时被跳过，例如只剩脏发布）。
-    // 这不是故障，按"已是最新"提示，别用 danger 吓人。
+    // 这不是故障，按"已是最新"提示，别用 danger 吓人 —— 它是终态结论而不是
+    // 需要重试的故障，toast 足够。
     if (down?.code === 2) {
       notify(down.msg || '当前已是最新版本', 'success', 3000)
       return
     }
     if (down?.code !== 1) {
-      notify(down?.msg || '下载失败', 'danger', 3000)
+      await failBox(`${ep.name}下载失败`, down?.msg || '下载失败，请检查网络或代理设置后重试')
       return
     }
     if (!(await confirm(`${down.msg} 下载完成，是否升级？`, { okText: '确认', okVariant: 'danger' }))) return
@@ -69,9 +81,13 @@ async function runUpgrade(kind) {
     // 遮罩之后由 /api/updata/status 轮询接管，直到完成或失败才撤。
     markUpgradeStarted(kind)
     const up = await post(API.adminUpdata)
-    notify(up?.msg || '已触发更新', up?.type || 'info', 3000)
-  } catch {
-    notify(`${ep.name}更新操作失败`, 'danger', 1500)
+    if (up?.code !== 1) {
+      // 触发升级本身失败：撤遮罩并弹窗说清，否则用户会盯着一块遮罩等到超时。
+      abortUpgrade()
+      await failBox(`${ep.name}升级未触发`, up?.msg || '升级未能触发，请重试')
+    }
+  } catch (e) {
+    await failBox(`${ep.name}更新操作失败`, e?.message || '请求未能完成，请检查网络后重试')
   } finally {
     busyKind.value = ''
   }
