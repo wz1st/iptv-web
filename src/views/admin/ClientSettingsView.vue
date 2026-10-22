@@ -17,9 +17,8 @@ const TABS = computed(() => {
   // 自己的 ref），看着像两级菜单、点一下才展开，实际是并列的两项 ——
   // 合成一行后层级少一层，也不用为"在内层切到骆驼壳"单独设计状态。
   //
-  // ★主线（main）：**清和壳优先** —— 排第一个且占 /admin/client
-  //   （安装完成后自动编的就是它，见 spaSiteApi.InstallData 编的是清和壳）。
-  //   custom 分支相反（那边骆驼壳优先）—— 两边主槽位不同，刻意不一致。
+  // ★清和壳优先 —— 排第一个且占 /admin/client（安装完成后自动编的就是它，
+  //   见 spaSiteApi.InstallData 编的是清和壳）。
   const list = [
     {
       key: 'qh',

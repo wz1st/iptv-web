@@ -28,7 +28,6 @@ export const API = {
   adminClientMyTVData: '/api/clientMyTV/data',
   adminAdminsData: '/api/admins/data',
   adminUpdataData: '/api/updata/data',
-  adminAboutData: '/api/about/data',
   adminGuideData: '/api/guide/data',
   adminGuideAck: '/api/guide/ack',
   adminEngineData: '/api/engine/data',
@@ -216,8 +215,12 @@ export const ENGINE_ROUTES = {
   proxy: '/api/engine/proxy',
   restartEngine: '/api/engine/restart',
   autoRes: '/api/engine/autoRes',
+  // 「立即执行」：开关已开时手动触发一次全量分辨率与延迟识别
+  autoResRun: '/api/engine/autoResRun',
   disCh: '/api/engine/disCh',
   epgFuzz: '/api/engine/epgFuzz',
+  // 「立即执行」：开关已开时手动触发一次 EPG 模糊识别
+  epgFuzzRun: '/api/engine/epgFuzzRun',
   register: '/api/engine/register',
   login: '/api/engine/login',
   changePwd: '/api/engine/changePwd',

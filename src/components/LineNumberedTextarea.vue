@@ -9,6 +9,8 @@ const props = defineProps({
   /** 只读态：内容不可编辑（底色压灰）。**不影响**行号区的状态切换与复制 */
   readonly: { type: Boolean, default: false },
   rows: { type: [Number, String], default: 15 },
+  /** 行数上限：内容超过它才在框内滚动（滚动条隐藏，滚轮仍可滚）。 */
+  maxRows: { type: [Number, String], default: 30 },
   placeholder: { type: String, default: '' },
   // 显式停用行：数组里每一项与某一行的内容**逐字相同**即算停用。
   // 这是当前的主渠道；文本里自带 `0|`/`1|` 前缀的行不查它（前缀优先，见 isOff）。
@@ -25,7 +27,7 @@ const emit = defineEmits(['update:modelValue', 'toggle-off'])
 
 /** 行高（px）—— 必须与 CSS 里的 `--lned-lh` 一致，行号/色带都按它算偏移 */
 const LINE_H = 20
-/** textarea 的 padding-top（px）—— 与 `.lned__ta` 的 CSS 一致 */
+/** textarea 的 padding-top（px）—— 必须与 CSS 里的 `--lned-pt` 一致 */
 const PAD_TOP = 8
 
 const taEl = ref(null)
@@ -51,6 +53,17 @@ const lines = computed(() =>
     .split('\n')
     .map((text) => ({ text, off: isOff(text) }))
 )
+
+/**
+ * textarea 的实际行数：随内容行数自适应（上限 maxRows）。
+ * 固定 rows 会出现"行号列按内容总行数撑高、文本区却只有固定行数"——
+ * 结果是下半截只有行号没有内容，且框内冒出纵向滚动条。
+ */
+const effectiveRows = computed(() => {
+  const min = Math.max(1, Number(props.rows) || 15)
+  const max = Math.max(min, Number(props.maxRows) || 30)
+  return Math.min(Math.max(lines.value.length, min), max)
+})
 
 /** 色带偏移：内容区第 i 行的顶边，再减去已滚动的距离 */
 const bandTop = (i) => `${PAD_TOP + i * LINE_H - scrollTop.value}px`
@@ -178,7 +191,7 @@ onBeforeUnmount(() => {
         class="ui-textarea lned__ta"
         :value="modelValue"
         :readonly="readonly"
-        :rows="rows"
+        :rows="effectiveRows"
         :placeholder="placeholder"
         :title="hoverTip"
         wrap="off"
@@ -211,6 +224,9 @@ onBeforeUnmount(() => {
   --lned-gutter-pad-r: 6px;
   /** 停用红条宽度（行号列里的竖条） */
   --lned-offbar: 2px;
+  /* 上下内边距。**三处（行号列 / 行号列内容 / 文本区）必须一致**，
+     否则首行行号与首行文字错位。JS 侧的 PAD_TOP 也是这个值。 */
+  --lned-pt: 8px;
   display: flex;
   align-items: stretch;
   border: 1px solid var(--input);
@@ -232,15 +248,22 @@ onBeforeUnmount(() => {
 .lned__gutter {
   flex: none;
   width: var(--lned-gutter);
+  /* absolute 的行号列以它为定位基准 */
+  position: relative;
   /* 右侧留白由 --lned-gutter-pad-r 给（同时决定停用红条的落点，见 .lned 里的注释）。 */
-  padding: 8px var(--lned-gutter-pad-r) 8px 0;
+  padding: var(--lned-pt) var(--lned-gutter-pad-r) var(--lned-pt) 0;
   overflow: hidden;
   background: var(--muted);
   border-right: 1px solid var(--border);
   user-select: none;
 }
 .lned__gutter-inner {
-  /* 位移由内联 style 给（跟随 textarea 滚动），这里只负责"它会动" */
+  /* 绝对定位：**不撑开行号列的高度**（否则行号列比文本区高，
+     会出现"下半截只有行号没有内容"）。超出部分由 gutter 的 overflow 裁掉，
+     滚动时靠 translateY 跟随文本区。 */
+  position: absolute;
+  top: var(--lned-pt);
+  left: 0;
   will-change: transform;
 }
 .lned__no {
@@ -325,7 +348,7 @@ onBeforeUnmount(() => {
   border: 0;
   border-radius: 0;
   background: transparent;
-  padding: 8px 44px 8px 11px;
+  padding: var(--lned-pt) 44px var(--lned-pt) 11px;
   font-family: var(--font-mono);
   font-size: 12.5px;
   line-height: var(--lned-lh);
@@ -333,6 +356,14 @@ onBeforeUnmount(() => {
   min-height: 78px;
   outline: none;
   box-shadow: none;
+  /* 框内不画纵向滚动条：行数已按内容自适应（见 effectiveRows），
+     超出上限时靠滚轮滚，行号列同步跟随。 */
+  scrollbar-width: none;
+}
+.lned__ta::-webkit-scrollbar {
+  width: 0;
+  /* 横向保留：长 URL 还要能往右看 */
+  height: 8px;
 }
 .lned__ta:focus {
   border: 0;

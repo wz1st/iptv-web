@@ -50,7 +50,7 @@ const typeText = computed(() => {
     case 0: return '未授权'
     case 1: return '已授权'
     case 2: return '永久授权'
-    default: return '定制授权'
+    default: return '已授权'
   }
 })
 // 有具体原因时用 warning（黄）：它不是"未授权"那种 red 终态，网络恢复会自愈。
@@ -193,6 +193,34 @@ async function onToggleEpgFuzz(v) {
 async function onToggleShortURL(v) {
   await toggleEngine(ENGINE_ROUTES.shortURL, { enable: v === 1 }, revertTo(shortURL, v), v === 1 ? '已开启短订阅链接' : '已关闭短订阅链接')
 }
+
+/* ---------------- 「立即执行」 ---------------- */
+// 两个开关打开后，紧跟一个「立即执行」按钮：手动跑一次对应功能。
+// 任务由引擎执行（分辨率识别很慢），接口只负责点火，所以这里只提示"已开始"。
+const runningAutoRes = ref(false)
+const runningEpgFuzz = ref(false)
+
+async function runNow(url, flag, okMsg) {
+  if (flag.value) return
+  if (!licensed.value) {
+    notify(licHint.value || '未授权，请先登录授权账号', 'warning', 3000)
+    return
+  }
+  flag.value = true
+  try {
+    const res = await submitAction(url, {}, { silent: true })
+    if (res && res.code >= 1) {
+      notify(res.msg || okMsg, 'success', 3000)
+    } else {
+      notify(res?.msg || '执行失败', 'danger', 3200)
+    }
+  } finally {
+    flag.value = false
+  }
+}
+
+const runAutoResNow = () => runNow(ENGINE_ROUTES.autoResRun, runningAutoRes, '已开始执行分辨率与延迟识别')
+const runEpgFuzzNow = () => runNow(ENGINE_ROUTES.epgFuzzRun, runningEpgFuzz, '已开始执行 EPG 模糊识别')
 
 /* ---------------- 引擎 ---------------- */
 async function restartEngine() {
@@ -479,6 +507,17 @@ async function doLogout() {
           <div class="ui-inline" style="margin-bottom: 12px">
             <span class="ui-field__label" style="margin: 0">自动识别:</span>
             <AppSwitch v-model="autoRes" :disabled="!licensed" @change="onToggleAutoRes" />
+            <!-- 开关打开后才出现：手动跑一次全量分辨率与延迟识别 -->
+            <button
+              v-if="autoRes"
+              class="ui-btn ui-btn--info ui-btn--xs"
+              type="button"
+              style="margin-left: 10px"
+              :disabled="!licensed || runningAutoRes"
+              @click="runAutoResNow"
+            >
+              {{ runningAutoRes ? '执行中…' : '立即执行' }}
+            </button>
           </div>
           <small class="ui-help ui-help--ink">提示：源更新时自动测试分辨率和延迟，CPU、内存占用较大，谨慎开启！！！可以在「频道管理 → 频道分组 → EPG管理」里手动单条测速、测分辨率。</small>
 
@@ -500,6 +539,17 @@ async function doLogout() {
           <div class="ui-inline" style="margin-bottom: 12px">
             <span class="ui-field__label" style="margin: 0">EPG模糊识别:</span>
             <AppSwitch v-model="epgFuzz" :disabled="!licensed" @change="onToggleEpgFuzz" />
+            <!-- 开关打开后才出现：手动跑一次 EPG 模糊匹配（点它才执行） -->
+            <button
+              v-if="epgFuzz"
+              class="ui-btn ui-btn--info ui-btn--xs"
+              type="button"
+              style="margin-left: 10px"
+              :disabled="!licensed || runningEpgFuzz"
+              @click="runEpgFuzzNow"
+            >
+              {{ runningEpgFuzz ? '执行中…' : '立即执行' }}
+            </button>
           </div>
           <small class="ui-help ui-help--ink">提示：频道自动绑定未识别时启用模糊识别，以提升识别成功率。存在识别错误问题，谨慎开启。</small>
         </div>

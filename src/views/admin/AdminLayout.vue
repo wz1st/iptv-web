@@ -1,10 +1,11 @@
 <script setup>
 // 后台布局 —— shadcn-vue 的侧栏壳（与 One-KVM 的设置页同一套结构）。
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/components/AppIcon.vue'
 import ImageZoom from '@/components/ImageZoom.vue'
 import LicenseNotice from '@/components/LicenseNotice.vue'
+import SponsorDialog from '@/components/SponsorDialog.vue'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -19,7 +20,6 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import NavMenuButton from '@/components/admin/NavMenuButton.vue'
-import NavLink from '@/components/admin/NavLink.vue'
 import { Sun, Moon, LogOut, Download } from 'lucide-vue-next'
 import { siteName, version, guideAck } from '@/utils/site'
 import { API } from '@/api/endpoints'
@@ -30,6 +30,9 @@ import { useTheme } from '@/composables/useTheme'
 const route = useRoute()
 const router = useRouter()
 const { isDark, toggleTheme } = useTheme()
+
+// 赞助作者弹窗（升级日志页已取消，赞助入口改为弹窗）。
+const sponsorOpen = ref(false)
 
 // 「点击跳转 + 移动端跳完立刻关 sheet」不能在 AdminLayout 的 setup 里做：
 
@@ -79,7 +82,6 @@ const MENU_GROUPS = [
     items: [
       // 进阶功能：授权引擎。路径与接口已随引擎改名 license → engine
       { key: 'engine', label: '进阶功能', icon: 'key', paths: ['/admin/engine'] },
-      { key: 'about', label: '升级日志', icon: 'info', paths: ['/admin/about'] },
       // 使用说明置于整个菜单卡片最末
       { key: 'guide', label: '使用说明', icon: 'clipboard', paths: ['/admin/guide'] },
     ],
@@ -181,7 +183,12 @@ async function logout() {
           <p class="m-0">{{ version }}</p>
           <p class="m-0 mt-0.5 flex justify-center gap-3">
             <a href="https://www.qingh.xyz" target="_blank" rel="noopener">清和博客</a>
-            <NavLink to="/admin/about#bottom">赞助作者</NavLink>
+            <!-- 赞助作者：弹窗展示两个收款码（升级日志页已取消，这里不再跳页） -->
+            <button
+              type="button"
+              class="border-0 bg-transparent p-0 font-inherit text-inherit cursor-pointer hover:underline"
+              @click="sponsorOpen = true"
+            >赞助作者</button>
           </p>
         </div>
       </Sidebar>
@@ -214,5 +221,8 @@ async function logout() {
 
     <!-- 未授权提示：挂一份在布局上 = 进后台时判一次（组件内部用 onMounted， -->
     <LicenseNotice />
+
+    <!-- 赞助作者：两个收款二维码（升级日志页已取消） -->
+    <SponsorDialog v-model="sponsorOpen" />
   </div>
 </template>
