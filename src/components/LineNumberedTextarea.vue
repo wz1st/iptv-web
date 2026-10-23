@@ -205,10 +205,13 @@ onBeforeUnmount(() => {
 /* 行高常量：CSS 与 JS 都读它（JS 侧是 LINE_H），改一处必须改另一处 */
 .lned {
   --lned-lh: 20px;
-  /* 行号列宽度。两条取值线分开写，是因为**带切换按钮**时右侧要先让出 */
-  --lned-gutter: 33px;
-  /* 行号列右侧留白。**它同时决定两件事，所以必须共用一个变量**： */
-  --lned-gutter-pad-r: 6px;
+  /* 行号列**总宽**（含左右内边距与右边框，因为 .lned__gutter 用 border-box）。
+     内容盒宽度 = 总宽 - pad-l - pad-r - 右边框。 */
+  --lned-gutter: 40px;
+  /* 左右内边距。左边给"停用/启用按钮"让位，右边给"行号右对齐"留呼吸位。
+     两边都**不能省**：省了按钮就压在外边框上、行号就压在中缝线上。 */
+  --lned-gutter-pad-l: 6px;
+  --lned-gutter-pad-r: 4px;
   /** 停用红条宽度（行号列里的竖条） */
   --lned-offbar: 2px;
   display: flex;
