@@ -7,6 +7,7 @@ import { notify } from '@/utils/feedback'
 import { confirm, notifyBox } from '@/utils/confirm'
 import { API } from '@/api/endpoints'
 import { markUpgradeStarted, abortUpgrade } from '@/utils/upgrade'
+import { startDownload, stopDownload } from '@/utils/download'
 
 const version = ref('')       // 管理系统（api，与前端同版本号)
 const engineVersion = ref('') // 引擎
@@ -61,8 +62,22 @@ async function runUpgrade(kind) {
     }
     if (!(await confirm(`${check.msg}，是否下载？`, { okText: '确认', okVariant: 'danger' }))) return
 
-    notify('更新下载中', 'info', 1200)
-    const down = await post(ep.down)
+    // 下载期间上全屏遮罩 + 实时进度。
+    //
+    // 这一步是**一次普通的同步 HTTP 请求** —— 它返回就是下载完了，它抛错就是
+    // 下载失败了。所以遮罩的边界完全由这个 promise 决定，不需要去问服务端
+    // "现在到底在不在下载"（那正是升级遮罩的判据，两套别混）。
+    //
+    // 30MB 的包在慢网络下要下好几分钟，期间不给任何反馈，用户只能对着一个
+    // 不动的按钮猜是不是卡死了。
+    startDownload(kind)
+    let down
+    try {
+      down = await post(ep.down)
+    } finally {
+      // 三条路径（成功 / code≠1 / 抛错）都要撤遮罩。stopDownload 幂等。
+      stopDownload()
+    }
     // code 2 = 发布位里没有合格的新版本（检测通过、下载时被跳过，例如只剩脏发布）。
     // 这不是故障，按"已是最新"提示，别用 danger 吓人 —— 它是终态结论而不是
     // 需要重试的故障，toast 足够。

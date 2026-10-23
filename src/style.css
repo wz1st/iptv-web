@@ -873,6 +873,17 @@ html[data-theme="dark"] .ui-help--ink { color: #fff; }
   transition: width .4s ease;
 }
 
+/* ---------- 下载遮罩 ---------- */
+/* 层级 3100：高于 .ui-loading-layer(2900)、低于 .ui-upgrade-mask(3200)。
+   - 高于 loading：下载期间其它请求会陆续失败，前端可能顺手 loadingShow()，
+     那个转圈不该浮在下载遮罩上面。
+   - 低于升级遮罩：两者理论上不同时出现（下载完才轮得到升级），
+     留出余量免得将来叠罩时升级遮罩被压住。
+   样式复用 .ui-upgrade-mask 的其余部分（同一张卡片、同一根进度条）。 */
+.ui-download-mask {
+  z-index: 3100;
+}
+
 /* ---------- Pagination ---------- */
 .ui-pager {
   display: flex; align-items: center; justify-content: center;

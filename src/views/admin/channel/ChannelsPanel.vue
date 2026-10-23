@@ -1100,7 +1100,9 @@ const TYPE_LABEL = {
       <!-- ============ 弹窗：编辑频道（频道列表） ============ -->
       <!-- 普通分组：源地址视图**可编辑**（改内容 / 调顺序 / 增删行，点「保存」 -->
       <!-- 整表提交，POST /api/channels/chImport，文本即真值 —— 行的先后就是最终…… -->
-      <AppModal v-model="showTxt" title="编辑频道" size="lg">
+      <!-- ★ close-on-mask=false：点框外**不关**这个弹窗。它里面是一整张可编辑的 -->
+      <!-- 频道表，误点遮罩就丢掉正在编辑的内容，代价太大（其它弹窗仍保持可点外关）。 -->
+      <AppModal v-model="showTxt" title="编辑频道" size="lg" :close-on-mask="false">
         <div class="ui-field">
           <label class="ui-field__label">分组名称</label>
           <div class="ui-ro">{{ txtForm.caname }}</div>

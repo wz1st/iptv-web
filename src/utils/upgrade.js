@@ -2,6 +2,7 @@ import { reactive, readonly } from 'vue'
 import { post } from '@/api/http'
 import { API } from '@/api/endpoints'
 import { notify } from '@/utils/feedback'
+import { isDownloadPhase, isUpgradePhase } from '@/utils/updataPhase'
 
 // 在线升级的全局遮罩状态 —— 项目里最标准的「状态放 utils / 渲染放 components」
 // 范式（见 utils/confirm.js + components/ConfirmHost.vue）。
@@ -42,6 +43,17 @@ import { notify } from '@/utils/feedback'
 // 只撤遮罩不刷新，用户会停在一个"界面看着是新版、行为却是旧版"的状态
 // （路由表、接口字段对不上都要过很久才暴露）。所以 done ⇒ 撤遮罩 + 刷新。
 // 刷新用 sessionStorage 记一次，避免"刷新后又读到 done"形成二次刷新。
+//
+// ## 下载阶段不归本文件管
+//
+// 后端把"正在下载"（check/fetch/verify）也报成 running=true —— 那确实是在
+// 进行中。若本文件照单全收，用户在下载刚开始时就会看到"正在升级"，而那时
+// 其实一个文件都还没换；更糟的是下载结束那一刻服务端把 phase 置成 ready，
+// 而 ready **刻意不算 running**，于是遮罩刚上就被自己撤掉，还弹一句
+// "未能触发升级，请重试"。
+//
+// 所以判据是 **phase 归属**而不是 running：下载阶段归 utils/download.js
+// （那个文件里有完整说明），本文件只管安装阶段（stage/apply）与它的收尾。
 
 const KEY = 'iptv-upgrading-at'
 const DONE_KEY = 'iptv-upgrade-done-at'
@@ -113,6 +125,29 @@ function apply(view) {
   state.failed = view.failed || ''
 }
 
+// applyServer 把服务端状态套到本地遮罩。
+//
+// ★ running 的判据不是服务端的 running，而是**阶段归属**。
+//
+// 服务端把下载阶段（check/fetch/verify）也算 running=true —— 那确实是在
+// 进行中。但下载期该亮的是下载遮罩（utils/download.js）。照抄服务端的
+// running 会出两个具体的错：
+//   1. 页面刷新正好落在下载中 ⇒ 一上来就弹"正在升级管理系统"，而后台
+//      其实只是在拉 30MB 的包，一个文件都没换。
+//   2. 下载结束那一刻服务端把 phase 置成 ready，而 ready **刻意不算 running**
+//      （那段是"包已就绪、等人确认安装"）⇒ 遮罩刚上就被自己撤掉，还顺手
+//      弹一句"未能触发升级，请重试"。
+//
+// 所以：只有 stage/apply（真正在替换文件）才归本遮罩管。
+function applyServer(view) {
+  state.running = !!view.running && isUpgradePhase(view.phase)
+  state.kind = view.kind || ''
+  state.phase = view.phase || ''
+  state.percent = Number(view.percent) || 0
+  state.msg = view.msg || ''
+  state.failed = view.failed || ''
+}
+
 // markUpgradeStarted 由「点开始升级」的一方调用：立刻上遮罩，不等服务端回话。
 export function markUpgradeStarted(kind) {
   requestedAt = Date.now()
@@ -146,9 +181,13 @@ async function poll() {
     const view = res?.data
     if (!view) return
     if (view.running) {
+      // 下载阶段归下载遮罩管（utils/download.js），本遮罩不接管。
+      // 见 applyServer 的说明：照抄服务端的 running 会在下载刚开始时
+      // 弹出"正在升级"，并在下载结束那一刻自己把自己撤掉。
+      if (isDownloadPhase(view.phase)) return
       // 服务端已经认下这轮升级 ⇒ 抢跑窗口结束，宽限期不再有意义。
       requestedAt = 0
-      apply(view)
+      applyServer(view)
       writeMark(Date.now())
       return
     }
@@ -229,7 +268,11 @@ function pollOnceAtBoot() {
     .then((res) => {
       const view = res?.data
       if (!view?.running) return
-      apply(view)
+      // 服务端正在**下载**（check/fetch/verify）也报 running=true。那是下载
+      // 遮罩的事（utils/download.js），升级遮罩不能来抢 —— 否则页面一打开
+      // 就弹"正在升级管理系统"，而后台其实只是在拉 30MB 的包。
+      if (isDownloadPhase(view.phase)) return
+      applyServer(view)
       writeMark(Date.now())
       startUpgradeWatch()
     })

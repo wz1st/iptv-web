@@ -7,6 +7,7 @@ import { notify } from '@/utils/feedback'
 import { confirm, notifyBox } from '@/utils/confirm'
 import { API, ENGINE_ROUTES } from '@/api/endpoints'
 import { markUpgradeStarted, abortUpgrade } from '@/utils/upgrade'
+import { startDownload, stopDownload } from '@/utils/download'
 import AppSwitch from '@/components/AppSwitch.vue'
 import AppModal from '@/components/AppModal.vue'
 
@@ -323,7 +324,9 @@ async function checkEngineUpdate() {
     return
   }
   if (!(await confirm(`${res.msg}，是否下载？`, { okText: '确认', okVariant: 'danger' }))) return
-  notify('更新下载中', 'info', 1200)
+  // 下载期间上全屏遮罩 + 实时进度（与「在线升级」页同一套）。
+  // 边界由这个请求自己的 promise 决定：返回 = 下完，抛错 = 失败。
+  startDownload('engine')
   let down
   try {
     down = await post(API.adminUpdataDownEngine)
@@ -331,6 +334,8 @@ async function checkEngineUpdate() {
     await notifyBox(e?.message || '下载请求未能完成，请检查网络或代理设置后重试',
       { title: '引擎下载失败', okText: '知道了', okVariant: 'danger' })
     return
+  } finally {
+    stopDownload()
   }
   if (down?.code !== 1) {
     // code 2 = 发布位里没有合格的新版本（检测通过、下载时被跳过）：不是故障。
