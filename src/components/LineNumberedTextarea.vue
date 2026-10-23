@@ -220,7 +220,7 @@ onBeforeUnmount(() => {
   --lned-lh: 20px;
   /* 行号列**总宽**（含左右内边距与右边框，因为 .lned__gutter 用 border-box）。
      内容盒宽度 = 总宽 - pad-l - pad-r - 右边框。 */
-  --lned-gutter: 46px;
+  --lned-gutter: 40px;
   /* 左右内边距。左边给"停用/启用按钮"让位，右边给"行号右对齐"留呼吸位。
      两边都**不能省**：省了按钮就压在外边框上、行号就压在中缝线上。 */
   --lned-gutter-pad-l: 6px;
