@@ -1,15 +1,18 @@
 <script setup>
 // 进阶功能 —— 重构自 admin_license.html（426 行）。
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { post } from '@/api/http'
 import { submitAction } from '@/utils/page'
 import { notify } from '@/utils/feedback'
-import { confirm, notifyBox } from '@/utils/confirm'
+import { confirm } from '@/utils/confirm'
 import { API, ENGINE_ROUTES } from '@/api/endpoints'
-import { markUpgradeStarted, abortUpgrade } from '@/utils/upgrade'
-import { startDownload, stopDownload } from '@/utils/download'
+import { useUpdateBadge } from '@/composables/useUpdateBadge'
+import UpdateTip from '@/components/UpdateTip.vue'
 import AppSwitch from '@/components/AppSwitch.vue'
 import AppModal from '@/components/AppModal.vue'
+
+const router = useRouter()
 
 // ⚠️ 这行 console.log 是**故意保留**的原版行为，别当调试残留清掉：
 console.log('入群密码后半段： 599f2b69')
@@ -134,7 +137,12 @@ function stopStatePolling() {
 onMounted(async () => {
   await load()
   startStatePolling()
+  // 进入本页即清掉引擎红点（本次登录期内菜单/进阶功能不再挂引擎红点）。
+  clearBadge('engine')
 })
+
+// 引擎有新版本时，菜单/进阶功能/标签的红点由 useUpdateBadge 统一驱动。
+const { hasBadge, clearBadge } = useUpdateBadge()
 
 onBeforeUnmount(stopStatePolling)
 
@@ -224,9 +232,18 @@ const runAutoResNow = () => runNow(ENGINE_ROUTES.autoResRun, runningAutoRes, '�
 const runEpgFuzzNow = () => runNow(ENGINE_ROUTES.epgFuzzRun, runningEpgFuzz, '已开始执行 EPG 模糊识别')
 
 /* ---------------- 引擎 ---------------- */
+const restarting = ref(false)
+
 async function restartEngine() {
   if (!(await confirm('确定要重启引擎吗？', { okText: '重启', okVariant: 'danger' }))) return
-  await postEngine(ENGINE_ROUTES.restartEngine, {}, { reload: load })
+  restarting.value = true
+  try {
+    // noLoading：重启是长动作，全屏遮罩会正好挡住用户刚点的这个按钮 ——
+    // 加载态收进按钮自己的转圈上（与客户端「在线升级基底」同一取舍）。
+    await postEngine(ENGINE_ROUTES.restartEngine, {}, { reload: load, noLoading: true })
+  } finally {
+    restarting.value = false
+  }
 }
 
 // 引擎日志（实时刷新）
@@ -315,53 +332,10 @@ async function checkProxy() {
   }
 }
 
-async function checkEngineUpdate() {
-  const res = await post(API.adminUpdataCheckEngine)
-  if (res?.code !== 1) {
-    // 检查失败是终态（跨大版本要换镜像 / 没合格发布）⇒ 弹窗，不自动消失。
-    if (res?.code === 2) notify(res.msg || '当前已是最新版本', 'success', 3000)
-    else await notifyBox(res?.msg || '检查更新失败', { title: '引擎更新', okText: '知道了', okVariant: 'danger' })
-    return
-  }
-  if (!(await confirm(`${res.msg}，是否下载？`, { okText: '确认', okVariant: 'danger' }))) return
-  // 下载期间上全屏遮罩 + 实时进度（与「在线升级」页同一套）。
-  // 边界由这个请求自己的 promise 决定：返回 = 下完，抛错 = 失败。
-  startDownload('engine')
-  let down
-  try {
-    down = await post(API.adminUpdataDownEngine)
-  } catch (e) {
-    await notifyBox(e?.message || '下载请求未能完成，请检查网络或代理设置后重试',
-      { title: '引擎下载失败', okText: '知道了', okVariant: 'danger' })
-    return
-  } finally {
-    stopDownload()
-  }
-  if (down?.code !== 1) {
-    // code 2 = 发布位里没有合格的新版本（检测通过、下载时被跳过）：不是故障。
-    if (down?.code === 2) notify(down.msg || '当前已是最新版本', 'success', 3000)
-    else await notifyBox(down?.msg || '下载失败，请检查网络或代理设置后重试',
-      { title: '引擎下载失败', okText: '知道了', okVariant: 'danger' })
-    return
-  }
-  if (!(await confirm(`${down.msg} 下载完成，是否升级？`, { okText: '确认', okVariant: 'danger' }))) return
-  // 与「在线升级」页同一套遮罩：引擎升级同样会重启进程。
-  markUpgradeStarted('engine')
-  let up
-  try {
-    up = await post(API.adminUpdata)
-  } catch (e) {
-    // 触发失败要主动撤遮罩，否则用户会盯着一块遮罩等到 15 分钟兜底。
-    abortUpgrade()
-    await notifyBox(e?.message || '升级未能触发，请重试',
-      { title: '引擎升级未触发', okText: '知道了', okVariant: 'danger' })
-    return
-  }
-  if (up?.code !== 1) {
-    abortUpgrade()
-    await notifyBox(up?.msg || '升级未能触发，请重试',
-      { title: '引擎升级未触发', okText: '知道了', okVariant: 'danger' })
-  }
+// 「检测更新」已取消：引擎的检测/下载/升级整条链在「在线升级」页，
+// 这里只负责跳过去（kind=engine 让那一页定位到引擎更新卡）。
+function goUpdata() {
+  router.push({ name: 'admin-updata', query: { kind: 'engine' } })
 }
 
 /* ---------------- 授权账号 ---------------- */
@@ -444,7 +418,10 @@ async function doLogout() {
             引擎状态
             <button class="ui-btn ui-btn--info ui-btn--xs" type="button" @click="openLog">查看日志</button>
           </h4>
-          <button class="ui-btn ui-btn--info" type="button" @click="restartEngine">重启引擎</button>
+          <button class="ui-btn ui-btn--info" type="button" :disabled="restarting" @click="restartEngine">
+            重启引擎
+            <span v-if="restarting" class="ui-btn__spinner" />
+          </button>
         </div>
         <div class="ui-card__body">
           <p class="ui-kv">
@@ -459,9 +436,18 @@ async function doLogout() {
           </p>
           <p class="ui-kv">
             引擎版本：<span class="ui-kv__v">{{ d.version || '-' }}</span>
-            <button class="ui-btn ui-btn--info ui-btn--xs" type="button" style="margin-left: 10px" @click="checkEngineUpdate">
-              检测更新
+            <!-- 检测更新已并入「在线升级」页：这里只跳转（定位到引擎更新卡） -->
+            <button
+              class="ui-btn ui-btn--info ui-btn--xs"
+              type="button"
+              style="margin-left: 10px"
+              title="前往在线升级页面检测并升级引擎"
+              @click="goUpdata"
+            >
+              <span v-if="hasBadge('engine')" class="eng-update-dot" />
+              在线升级
             </button>
+            <UpdateTip name="engine" text="发现新版本，点击「在线升级」即可升级引擎" />
           </p>
         </div>
       </div>
@@ -671,4 +657,14 @@ async function doLogout() {
 /* 只读展示统一走全局 .ui-kv（原先这里是同名 scoped .kv，已合并进 style.css） */
 /* .sep 随中转那三个输入框一起删除（"协议://地址:端口"那行的分隔符，已无用处） */
 /* .is-locked（pointer-events:none + opacity:.6 灰显）已随"未授权整块不渲染"一起 */
+/* 引擎有新版时，「在线升级」按钮内的红色小圆点（与菜单红点同源）。 */
+.eng-update-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--c-danger);
+  vertical-align: middle;
+}
 </style>

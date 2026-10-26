@@ -1,18 +1,30 @@
 <script setup>
 // 在线升级 —— 管理系统（api + 前端整包）与引擎两条链路，各自「检测 → 确认下载 → 确认升级」。
 // 前端(webdist)随管理系统同一发布标签发布，更新管理系统时一并更新，不再独立检查。
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { post } from '@/api/http'
 import { notify } from '@/utils/feedback'
 import { confirm, notifyBox } from '@/utils/confirm'
 import { API } from '@/api/endpoints'
 import { markUpgradeStarted, abortUpgrade } from '@/utils/upgrade'
 import { startDownload, stopDownload } from '@/utils/download'
+import { useUpdateBadge } from '@/composables/useUpdateBadge'
+import UpdateTip from '@/components/UpdateTip.vue'
 
+const route = useRoute()
 const version = ref('')       // 管理系统（api，与前端同版本号)
 const engineVersion = ref('') // 引擎
 const loading = ref(true)
 const busyKind = ref('')      // 正在走「检测→下载→升级」哪条链路：'' / 'web' / 'engine'
+const engineCard = ref(null)  // 引擎更新卡：从「进阶功能」跳转过来时定位用
+
+// 从「进阶功能 → 在线升级」跳过来时只认这一拍的 query（刷新后不再高亮）。
+const jumpToEngine = route.query.kind === 'engine'
+
+// 进入本页即视为"已看过点进来的更新入口"：清掉 web / engine 的红点
+// （本次登录期内不再挂菜单/标签红点，但提示仍可手动关闭）。
+const { clearBadge, dismissTip } = useUpdateBadge()
 
 // 升级链路上的失败一律弹窗，不走右下角自动关闭的 toast。
 //
@@ -36,7 +48,22 @@ async function load() {
   }
   loading.value = false
 }
-onMounted(load)
+onMounted(async () => {
+  await load()
+  clearBadge('web')
+  clearBadge('engine')
+  // 进「在线升级」页即清掉 web/engine 红点；engine 键与「进阶功能」共用，
+  // dismissTip('engine') 会连带清掉进阶功能的引擎红点 + 提醒（需求：在线升级徽章
+  // 清除时一并清除进阶功能的红点和 tip）。web 提醒只在在线升级页可见，同样清除。
+  dismissTip('web')
+  dismissTip('engine')
+  // 从「进阶功能」跳过来：页面默认停在第一张卡（管理系统），
+  // 直接把引擎更新卡滚进视口并闪一下边框，用户不用自己找。
+  if (jumpToEngine) {
+    await nextTick()
+    engineCard.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+})
 
 // 两条链路结构完全一样，只有「端点 + 被升级的对象名」不同。
 const KINDS = {
@@ -46,6 +73,8 @@ const KINDS = {
 
 async function runUpgrade(kind) {
   if (busyKind.value) return
+  // 点「检测更新」按钮即主动清掉本条升级提醒（需求：其余升级相关 tip 在点击对应按钮时主动清除）。
+  dismissTip(kind)
   const ep = KINDS[kind]
   busyKind.value = kind
   try {
@@ -126,11 +155,12 @@ async function runUpgrade(kind) {
             检测更新
             <span v-if="busyKind === 'web'" class="ui-btn__spinner" />
           </button>
+          <UpdateTip name="web" />
         </div>
       </div>
     </div>
 
-    <div class="ui-card u-mt-16">
+    <div ref="engineCard" class="ui-card u-mt-16" :class="{ 'is-jump-target': jumpToEngine }">
       <div class="ui-card__header"><h4>引擎更新</h4></div>
       <div class="ui-card__body">
         <div class="ui-inline">
@@ -145,6 +175,7 @@ async function runUpgrade(kind) {
             检测更新
             <span v-if="busyKind === 'engine'" class="ui-btn__spinner" />
           </button>
+          <UpdateTip name="engine" text="发现新版本，点击「检测更新」即可升级引擎" />
         </div>
       </div>
     </div>
@@ -156,3 +187,13 @@ async function runUpgrade(kind) {
     </small>
   </div>
 </template>
+
+<style scoped>
+/* 跳转落地高亮：一次性闪一下主色边框，动画放完自动收起（无需定时器清理）。 */
+@keyframes jumpFlash {
+  0%, 100% { box-shadow: none; }
+  25% { box-shadow: 0 0 0 2px var(--primary); }
+  60% { box-shadow: 0 0 0 2px var(--primary); }
+}
+.is-jump-target { animation: jumpFlash 1.8s ease-out 1; }
+</style>

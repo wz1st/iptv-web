@@ -10,6 +10,8 @@ import { notify } from '@/utils/feedback'
 import { confirm } from '@/utils/confirm'
 import { isCoarsePointer } from '@/utils/touchTap'
 import { API, CLIENT_ROUTES, CLIENT_ROUTES_LT } from '@/api/endpoints'
+import { useUpdateBadge } from '@/composables/useUpdateBadge'
+import UpdateTip from '@/components/UpdateTip.vue'
 
 // shell 决定走哪一套客户端：
 //   'lt'     骆驼壳 = 独立基底 Client_lt.apk 那套（/api/client/lt，**主槽位**，走 smali 注入地址）
@@ -32,6 +34,10 @@ const uploadBaseUrl = props.shell === 'lt' ? API.adminClientLtUploadBase : API.a
 // /lt/images/。写错时后端上传是成功的，只是预览永远 404（静默）。
 const ICON_PREFIX = props.shell === 'lt' ? '/lt/icon/' : '/icon/'
 const BJ_PREFIX = props.shell === 'lt' ? '/lt/images/' : '/images/'
+
+// 本壳对应的红点键：清和壳=qh，骆驼壳=lt。进入本面板即清掉对应红点。
+const badgeKey = props.shell === 'lt' ? 'lt' : 'qh'
+const { clearBadge, dismissTip } = useUpdateBadge()
 
 const d = ref(null)
 const loading = ref(true)
@@ -218,7 +224,10 @@ async function load() {
     loading.value = false
   }
 }
-onMounted(load)
+onMounted(async () => {
+  await load()
+  clearBadge(badgeKey)
+})
 
 /* ---------------- 双击输入框解锁 APK 连接地址 ---------------- */
 async function unlockUrl() {
@@ -375,6 +384,8 @@ async function onBasePick(e) {
 /** 在线查 + 升级合成一个入口：先查，有新版才问要不要升。 */
 async function checkAndUpgradeBase() {
   if (baseBusy.value) return
+  // 点「在线升级基底」按钮即主动清掉本条升级提醒（需求：其余升级相关 tip 在点击对应按钮时主动清除）。
+  dismissTip(badgeKey)
   baseBusy.value = true
   try {
     // noLoading：这条链路要走几分钟（下载远端基底），按钮上已经有转圈，
@@ -619,6 +630,7 @@ onBeforeUnmount(stopPolling)
                 在线升级基底
                 <span v-if="baseBusy" class="ui-btn__spinner" />
               </button>
+              <UpdateTip :name="badgeKey" text="发现新基底，点击「在线升级基底」即可更新" />
             </div>
             <small class="ui-help">
               提示：只接受包名 <code>{{ basePkg || 'xyz.qingh.qhtv' }}</code> 的基包 ——

@@ -13,9 +13,14 @@ import { notify } from '@/utils/feedback'
 import { confirm } from '@/utils/confirm'
 import { isCoarsePointer } from '@/utils/touchTap'
 import { API, MYTV_ROUTES } from '@/api/endpoints'
+import { useUpdateBadge } from '@/composables/useUpdateBadge'
+import UpdateTip from '@/components/UpdateTip.vue'
 
 const d = ref(null)
 const loading = ref(true)
+
+// 进入本面板即清掉 MyTV 红点（本次登录期内标签/菜单不再挂 MyTV 红点）。
+const { clearBadge, dismissTip } = useUpdateBadge()
 
 /* ---- 编译配置 ---- */
 const serverUrl = ref('')
@@ -117,7 +122,10 @@ async function load() {
     loading.value = false
   }
 }
-onMounted(load)
+onMounted(async () => {
+  await load()
+  clearBadge('mytv')
+})
 
 /* ---------------- 双击输入框解锁 APK 连接地址 ---------------- */
 async function unlockUrl() {
@@ -166,6 +174,8 @@ async function onBaseApkUpload(e) {
    查完分三种出口：无发布只提示、已最新只提示、有更新就走与在线升级**完全相同**的那一段。 */
 async function detectBaseUpdate() {
   if (checking.value || upgrading.value) return
+  // 点「检测更新」按钮即主动清掉 MyTV 基底升级提醒（需求：其余升级相关 tip 在点击对应按钮时主动清除）。
+  dismissTip('mytv')
   checking.value = true
   let c = null
   try {
@@ -340,6 +350,7 @@ onBeforeUnmount(stopPolling)
               检测更新
               <span v-if="checking || upgrading" class="ui-btn__spinner" />
             </button>
+            <UpdateTip name="mytv" text="发现新基底，点击「检测更新」即可升级" />
             <button
               class="ui-btn"
               type="button"

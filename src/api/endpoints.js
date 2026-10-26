@@ -48,6 +48,8 @@ export const API = {
   adminUpdata: '/api/updata/run',
   // 升级状态与进度：升级遮罩的唯一依据（刷新页面靠它恢复）
   adminUpdataStatus: '/api/updata/status',
+  // 登录后静默盘点各组件新版本（菜单/标签红点用，后端不写 Docker 日志）
+  adminUpdataSilentCheck: '/api/updata/silentCheck',
 
   // ---- 文件上传（multipart/form-data，不参与 JSON 化）----
   // 客户端图标 / 背景的上传**不在这一组**：这两个是**按壳分**的端点（清和壳

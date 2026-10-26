@@ -1,6 +1,6 @@
 <script setup>
 // 后台布局 —— shadcn-vue 的侧栏壳（与 One-KVM 的设置页同一套结构）。
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/components/AppIcon.vue'
 import ImageZoom from '@/components/ImageZoom.vue'
@@ -26,10 +26,27 @@ import { API } from '@/api/endpoints'
 import { confirm } from '@/utils/confirm'
 import { clearLicenseNoticeSeen } from '@/utils/licenseNotice'
 import { useTheme } from '@/composables/useTheme'
+import { useUpdateBadge } from '@/composables/useUpdateBadge'
 
 const route = useRoute()
 const router = useRouter()
 const { isDark, toggleTheme } = useTheme()
+const { hasBadge, runSilentCheck } = useUpdateBadge()
+
+// 进入后台（登录后）静默盘点各组件新版本，给菜单/标签挂红点。只跑一次，
+// 失败静默（后端不写 Docker 日志）；红点/提醒的有效期 = 本次登录会话。
+onMounted(runSilentCheck)
+
+// 菜单项的红点：把"组件键"聚合成"菜单入口"。
+//   在线升级 → 管理系统(web) 或 引擎(engine) 任一有新版本
+//   客户端设置 → 清和(qh) / 骆驼(lt) / MyTV(mytv) 任一有新版本
+//   进阶功能 → 引擎(engine) 有新版本
+function menuBadge(key) {
+  if (key === 'updata') return hasBadge('web') || hasBadge('engine')
+  if (key === 'client') return hasBadge('qh') || hasBadge('lt') || hasBadge('mytv')
+  if (key === 'engine') return hasBadge('engine')
+  return false
+}
 
 // 赞助作者弹窗（升级日志页已取消，赞助入口改为弹窗）。
 const sponsorOpen = ref(false)
@@ -166,6 +183,7 @@ async function logout() {
                 <NavMenuButton
                   :to="item.paths[0]"
                   :is-active="isActive(item)"
+                  :badge="menuBadge(item.key)"
                   :tooltip="item.label"
                   class="h-9 text-foreground data-[active=true]:bg-primary data-[active=true]:font-medium data-[active=true]:text-primary-foreground data-[active=true]:shadow-sm data-[active=true]:hover:bg-primary data-[active=true]:hover:text-primary-foreground"
                 >

@@ -7,9 +7,11 @@ import AdminTabs from '@/components/AdminTabs.vue'
 import ClientShellPanel from './client/ClientShellPanel.vue'
 import ClientMyTVPanel from './client/ClientMyTVPanel.vue'
 import { isLic } from '@/utils/site'
+import { useUpdateBadge } from '@/composables/useUpdateBadge'
 
 const route = useRoute()
 const router = useRouter()
+const { hasBadge, clearBadge } = useUpdateBadge()
 
 const TABS = computed(() => {
   // ★ 三个标签**同一行**：清和壳 / 骆驼壳 / MyTV客户端。
@@ -25,12 +27,14 @@ const TABS = computed(() => {
       label: '清和壳',
       path: '/admin/client',
       hint: '清和壳（Client.apk 基底）：连接地址、应用名、图标背景、编译与发布、基底升级',
+      badge: hasBadge('qh'),
     },
     {
       key: 'lt',
       label: '骆驼壳',
       path: '/admin/clientLt',
       hint: '骆驼壳（Client_lt.apk 基底）：与清和壳各自独立编译、发布、图标背景',
+      badge: hasBadge('lt'),
     },
   ]
   if (isLic.value) {
@@ -39,6 +43,7 @@ const TABS = computed(() => {
       label: 'MyTV客户端',
       path: '/admin/clientMyTV',
       hint: 'MyTV 版 APK 的版本与更新内容',
+      badge: hasBadge('mytv'),
     })
   }
   return list

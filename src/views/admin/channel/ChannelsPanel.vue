@@ -1197,9 +1197,11 @@ const TYPE_LABEL = {
                 <th class="u-center" style="width: 100px">分辨率</th>
                 <!-- 延迟 = iptv_channels.speed（引擎测速写入，api 原样下发）。 -->
                 <th class="u-center" style="width: 90px">延迟</th>
-                <th class="u-center" style="width: 180px">EPG</th>
+                <!-- EPG 列只放一个绑定上的 EPG 名，收窄到 120px；省下的宽度让给 URL。 -->
+                <th class="u-center" style="width: 120px">EPG</th>
                 <th class="u-center" style="width: 110px">LOGO</th>
-                <th class="u-center" style="width: 190px">操作</th>
+                <!-- 操作列两个 xs 按钮实测占 ~116px（含单元格内边距），120px 刚好一行放下。 -->
+                <th class="u-center" style="width: 120px">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -1386,11 +1388,12 @@ tr.is-dragging { opacity: .5; }
    整行高亮会被读成"替换它" */
 tr.is-drop-target > td { border-top: 2px solid var(--foreground); }
 
-/* 频道列表弹窗：URL 列的最小宽度 */
-.ch-url-col { min-width: 220px; }
+/* 频道列表弹窗：URL 列的最小宽度。直播源 URL 普遍一长串，
+   加宽到 340px 才能少折行、少出横向滚动条。 */
+.ch-url-col { min-width: 340px; }
 
-/* 窄屏（手机竖屏）再收一档：上面那条 220px 会让 URL 列整体落到视口右侧之外 */
+/* 窄屏（手机竖屏）再收一档：上面那条 340px 会让 URL 列整体落到视口右侧之外 */
 @media (max-width: 640px) {
-  .ch-url-col { min-width: 170px; }
+  .ch-url-col { min-width: 260px; }
 }
 </style>
