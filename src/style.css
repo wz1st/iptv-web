@@ -882,6 +882,21 @@ html[data-theme="dark"] .ui-help--ink { color: #fff; }
 .ui-tagselect__opt.is-active { background: var(--accent); color: var(--accent-foreground); font-weight: 500; }
 .ui-tagselect__opt input { accent-color: var(--primary); margin: 0; }
 .ui-tagselect__logo { height: 18px; width: auto; border-radius: 2px; background: #000; }
+/* 批量操作区（全选/反选/清除）：贴在搜索框下方，三个动作**只作用于当前搜索结果**。
+   用一条淡分隔线与搜索框、选项列表隔开，避免被当成普通选项。 */
+.ui-tagselect__batch {
+  display: flex; align-items: center; gap: 2px;
+  padding: 3px 4px 5px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.ui-tagselect__batch .ui-btn--text { padding: 3px 8px; }
+.ui-tagselect__batch-tip {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
 
 /* Stat card（仪表盘） */
 .ui-stat {

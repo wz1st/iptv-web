@@ -11,6 +11,9 @@ const props = defineProps({
   direction: { type: String, default: 'down' }, // down | up
   disabled: { type: Boolean, default: false },
   maxTagText: { type: Number, default: 0 }, // >0 时折叠标签
+  // 批量操作区（全选 / 反选 / 清除）：**默认关闭**，只在需要时按需开启。
+  // 三个动作都只作用于"当前搜索结果"（filtered），不影响列表外的已选项。
+  batchActions: { type: Boolean, default: false },
 })
 const emit = defineEmits(['update:modelValue', 'change'])
 
@@ -116,6 +119,47 @@ function clearAll() {
   emit('change', props.multiple ? [] : null)
 }
 
+/* ---------- 批量操作（全选 / 反选 / 清除）---------- */
+
+/** 当前搜索结果里可选的项（跳过 disabled）。 */
+const selectableFiltered = computed(() => filtered.value.filter((o) => !o.disabled))
+
+/**
+ * 三个动作**都只作用于当前搜索结果**：
+ * 「全选」= 把搜到的都加上；「反选」= 搜到的逐个翻转；
+ * 「清除」= 只把搜到的从已选里去掉（**列表外的已选项保留**）。
+ */
+function batchSelectAll() {
+  if (props.disabled) return
+  const next = selected.value.slice()
+  for (const o of selectableFiltered.value) {
+    if (!next.some((v) => String(v) === String(o.value))) next.push(o.value)
+  }
+  emit('update:modelValue', next)
+  emit('change', next.map((v) => props.options.find((o) => String(o.value) === String(v))).filter(Boolean))
+}
+
+function batchInvert() {
+  if (props.disabled) return
+  const next = selected.value.slice()
+  for (const o of selectableFiltered.value) {
+    const idx = next.findIndex((v) => String(v) === String(o.value))
+    if (idx > -1) next.splice(idx, 1)
+    else next.push(o.value)
+  }
+  emit('update:modelValue', next)
+  emit('change', next.map((v) => props.options.find((o) => String(o.value) === String(v))).filter(Boolean))
+}
+
+/** 只清除"当前搜到的"已选项 —— 列表外的选择不动。 */
+function batchClearFiltered() {
+  if (props.disabled) return
+  const inFilter = new Set(selectableFiltered.value.map((o) => String(o.value)))
+  const next = selected.value.filter((v) => !inFilter.has(String(v)))
+  emit('update:modelValue', next)
+  emit('change', next.map((v) => props.options.find((o) => String(o.value) === String(v))).filter(Boolean))
+}
+
 function onDocClick(e) {
   if (rootEl.value?.contains(e.target)) return
   if (dropEl.value?.contains(e.target)) return  // 浮层已 Teleport 出 rootEl，得单独兜住
@@ -178,6 +222,22 @@ defineExpose({ clearAll })
           <input v-model="keyword" class="ui-input ui-input--sm" placeholder="搜索…" @click.stop />
         </div>
 
+        <!-- 批量操作区：放在搜索框**下方**，三个动作都只作用于当前搜索结果。 -->
+        <div v-if="batchActions && filtered.length" class="ui-tagselect__batch">
+          <button class="ui-btn ui-btn--text ui-btn--xs" type="button" @click="batchSelectAll">
+            全选
+          </button>
+          <button class="ui-btn ui-btn--text ui-btn--xs" type="button" @click="batchInvert">
+            反选
+          </button>
+          <button class="ui-btn ui-btn--text ui-btn--xs" type="button" @click="batchClearFiltered">
+            清除
+          </button>
+          <span class="ui-tagselect__batch-tip">
+            {{ keyword ? `仅作用于当前搜索结果（${filtered.length} 项）` : `全部 ${filtered.length} 项` }}
+          </span>
+        </div>
+
         <div
           v-for="o in filtered"
           :key="String(o.value)"
@@ -203,7 +263,11 @@ defineExpose({ clearAll })
         </div>
 
         <div v-if="filtered.length" style="border-top: 1px solid var(--c-border); margin-top: 4px; padding-top: 4px">
-          <button class="ui-btn ui-btn--text ui-btn--xs" type="button" style="width: 100%" @click="clearAll">清空选择</button>
+          <!-- 底部这个清的是**全部**已选，与批量区里的"清除"（只清当前搜索结果）不是一回事，
+               所以名字要区分，否则用户会以为两者等价。 -->
+          <button class="ui-btn ui-btn--text ui-btn--xs" type="button" style="width: 100%" @click="clearAll">
+            清空全部选择
+          </button>
         </div>
       </div>
     </Teleport>

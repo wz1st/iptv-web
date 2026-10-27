@@ -8,6 +8,7 @@ const props = defineProps({
   modelValue: { type: String, default: '' },
   /** 只读态：内容不可编辑（底色压灰）。**不影响**行号区的状态切换与复制 */
   readonly: { type: Boolean, default: false },
+  /** 最小行数：内容不足它时也按它的高度撑开（不塌成一行）。 */
   rows: { type: [Number, String], default: 15 },
   placeholder: { type: String, default: '' },
   // 显式停用行：数组里每一项与某一行的内容**逐字相同**即算停用。
@@ -52,6 +53,20 @@ const lines = computed(() =>
     .map((text) => ({ text, off: isOff(text) }))
 )
 
+/**
+ * textarea 的实际行数：**只保下限，不设上限**。
+ *
+ * 下限 = rows（15 行）：内容不足也占 15 行的高度。
+ * 内容超过 15 行 ⇒ **撑高输入框**（行数跟着内容走），框内不再出现纵向滚动条 ——
+ * 整个弹窗只留 AppModal 那一处滚动（用户 2026-10-26 明确要求）。
+ *
+ * 固定 rows 会出现"行号列按内容总行数撑高、文本区却只有固定行数"——
+ * 结果是下半截只有行号没有内容，且框内冒出纵向滚动条。
+ */
+const effectiveRows = computed(() => {
+  const min = Math.max(1, Number(props.rows) || 15)
+  return Math.max(lines.value.length, min)
+})
 /** 色带偏移：内容区第 i 行的顶边，再减去已滚动的距离 */
 const bandTop = (i) => `${PAD_TOP + i * LINE_H - scrollTop.value}px`
 
@@ -336,6 +351,25 @@ onBeforeUnmount(() => {
   min-height: 78px;
   outline: none;
   box-shadow: none;
+  /* ★ 纵向不滚动：高度由 effectiveRows 撑开（内容超 15 行就撑高），
+     框内不再出现纵向滚动条 —— 整个弹窗只留 AppModal 那一处滚动。 */
+  overflow-y: hidden;
+  /* 横向仍可滚：频道 URL 往往比框宽，不滚就看不到后半段。 */
+  overflow-x: auto;
+  /* Firefox：横向滚动条保留（纵向已被 overflow-y:hidden 去掉） */
+  scrollbar-width: thin;
+}
+/* 横向滚动条**要显示**（用户 2026-10-26 明确）：纵向滚条隐藏，横向保留可见。 */
+.lned__ta::-webkit-scrollbar {
+  width: 0;
+  height: 9px;
+}
+.lned__ta::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--foreground) 22%, transparent);
+  border-radius: 5px;
+}
+.lned__ta::-webkit-scrollbar-track {
+  background: transparent;
 }
 .lned__ta:focus {
   border: 0;

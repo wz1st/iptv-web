@@ -222,7 +222,7 @@ async function delOne(u) {
                 <td class="u-mono u-text-sm">{{ u.deviceId }}</td>
                 <td>{{ u.model }}</td>
                 <td>{{ u.ip }}</td>
-                <td>{{ u.region }}</td>
+                <td class="u-ellipsis" :title="u.region">{{ u.region || '-' }}</td>
                 <td class="u-text-sm">{{ u.lastTimeStr }}</td>
                 <td :title="u.expDesc">{{ u.expDays }}</td>
                 <td>{{ u.author }}</td>
