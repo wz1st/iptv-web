@@ -13,6 +13,7 @@ import LineNumberedTextarea from '@/components/LineNumberedTextarea.vue'
 import { Switch } from '@/components/ui/switch'
 import { openImageZoom, closeImageZoom } from '@/utils/imageZoom'
 import { latencyClass, latencyText } from '@/utils/latency'
+import { buildCaForm } from '@/utils/caForm'
 
 // 本组件按 section 只渲染其中一块：
 defineProps({
@@ -249,21 +250,13 @@ function openAddCa() {
 }
 
 function openEditCa(c) {
-  caForm.value = {
-    caId: String(c.id ?? ''),
-    caname: c.name ?? '',
-    caua: c.ua ?? '',
-    // 聚合分组恒开中转（历史数据可能没开，进编辑时一并纠正）
-    proxy: isAutoType(c) ? true : !!(c.proxy),
-    autoRename: !!(c.autoRename),
-    ku9: c.ku9 ?? '',
-    autoType: c.type ?? '',
-    rulesRe: c.rules ?? '',
-  }
-  // 依据类型回填聚合模式
-  const t = c.type
-  autoMode.value = t === 'autoRe' ? 'autoRe' : t === 'autoEpgs' ? 'autoEpgs' : ''
-  ruleEpgs.value = []
+  // 回填规则（按类型分流）集中在 utils/caForm.js —— 纯函数，可单测。
+  const { caForm: form, autoMode: mode, ruleEpgs: epgs } = buildCaForm(c)
+  caForm.value = form
+  autoMode.value = mode
+  // 回填已选中的 EPG。少了这一步，再次打开编辑弹窗时是空的 ——
+  // 用户会以为没保存上，一保存就把该分组的 EPG 聚合规则清空。
+  ruleEpgs.value = epgs
   showCa.value = true
 }
 
@@ -1081,11 +1074,15 @@ const TYPE_LABEL = {
           </div>
 
           <div v-if="autoMode === 'autoEpgs'" class="ui-field">
+            <!-- batch-actions：搜索框下方给「全选/反选/清除」。
+                 三个动作都只作用于当前搜索结果 —— 清除只清搜到的那些，
+                 列表外的已选项保留（否则误清一大片）。 -->
             <TagSelect
               v-model="ruleEpgs"
               :options="epgOptions"
               placeholder="选择聚合的EPG"
               filterable
+              batch-actions
               direction="up"
             />
           </div>

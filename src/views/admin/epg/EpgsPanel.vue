@@ -354,7 +354,14 @@ async function onLogoUpload(e) {
       <div class="ui-field u-mb-0">
         <label class="ui-field__label">自动绑定的分组</label>
         <small class="ui-help">不在分组内的频道将不会自动绑定</small>
-        <TagSelect v-model="epgCaList" :options="caOptions" placeholder="选择自动绑定哪些频道分类中的频道" filterable direction="up" />
+        <TagSelect
+          v-model="epgCaList"
+          :options="caOptions"
+          placeholder="选择自动绑定哪些频道分类中的频道"
+          filterable
+          batch-actions
+          direction="up"
+        />
       </div>
 
       <template #footer>
@@ -384,6 +391,7 @@ async function onLogoUpload(e) {
           :options="chOptions"
           placeholder="手动绑定频道"
           filterable
+          batch-actions
           direction="down"
         />
       </div>
