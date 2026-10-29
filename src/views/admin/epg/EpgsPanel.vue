@@ -67,6 +67,18 @@ const splitIds = (s) =>
     .map(Number)
     .filter((n) => !Number.isNaN(n))
 
+// 「绑定频道」列的展示：名单可能几十个台，只显示前几个 + "等 N 个"，
+// 完整名单放在 title 里（hover 可见）。
+const BOUND_BRIEF_MAX = 4
+function boundNamesBrief(content) {
+  const list = String(content ?? '')
+    .split(',')
+    .map((t) => t.trim())
+    .filter((t) => t !== '')
+  if (list.length <= BOUND_BRIEF_MAX) return list.join('、')
+  return `${list.slice(0, BOUND_BRIEF_MAX).join('、')} 等 ${list.length} 个`
+}
+
 // 编辑回填直接读行对象 —— 原来靠行内隐藏 <td> 的 data-value 中转，
 // 表头列数与实际列数对不上，字段改名时还会静默取到空串。
 function openEdit(e) {
@@ -298,7 +310,12 @@ async function onLogoUpload(e) {
                     <span>上传</span>
                   </button>
                 </td>
-                <td class="u-text-sm">{{ e.content || '-' }}</td>
+                <!-- 绑定频道：后端返回的 content 已经是「手动绑定名单 ∪ 自动绑定结果」的合并清单。
+                     名单可能几十个台，这里只显示前几个 + 等 N 个，hover 看全文。 -->
+                <td class="u-text-sm">
+                  <span v-if="!e.content" class="u-text-3">-</span>
+                  <span v-else class="u-ellipsis" :title="e.content">{{ boundNamesBrief(e.content) }}</span>
+                </td>
                 <td class="u-center" @dblclick.stop>
                   <div class="ui-table__actions">
                     <button class="ui-btn ui-btn--info ui-btn--xs" type="button" @click="openBind(e)">手动绑定</button>
