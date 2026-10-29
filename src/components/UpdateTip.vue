@@ -7,7 +7,7 @@ import { useUpdateBadge } from '@/composables/useUpdateBadge'
 const props = defineProps({
   // 组件键：web / engine / qh / lt / mytv
   name: { type: String, required: true },
-  text: { type: String, default: '发现新版本，点击右侧按钮即可升级' },
+  text: { type: String, default: '发现新版本，点击按钮即可升级' },
 })
 
 const { tipVisible, dismissTip } = useUpdateBadge()
