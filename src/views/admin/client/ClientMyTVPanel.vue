@@ -321,7 +321,6 @@ onBeforeUnmount(stopPolling)
         <div class="ui-field" style="margin-top: 6px">
           <label class="ui-field__label">更新内容</label>
           <textarea v-model="upBody" class="ui-textarea" rows="5" placeholder="请输入更新内容" />
-          <small class="ui-help">提示：编译时随新版本一起保存，mytv 客户端检查更新时展示这段文字。</small>
         </div>
 
         <!-- ============ 编译基底（底包）============ -->
@@ -428,8 +427,7 @@ onBeforeUnmount(stopPolling)
           </section>
         </div>
         <small class="ui-help">
-          提示：「编译」在引擎里只产出待发布安装包，线上文件与版本号不动；点「发布」才把新包替换上去，
-          下载页与 mytv 客户端自升级同时切到新版本。新版本号自动取当前版本末位 +1（三位补零）。
+          提示：「编译」在引擎里只产出待发布安装包，点「发布」才把新包替换上去，
         </small>
       </div>
     </div>

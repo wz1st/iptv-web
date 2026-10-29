@@ -373,7 +373,7 @@ async function onLogoUpload(e) {
     <!-- 手动绑定频道 -->
     <AppModal v-model="showBind" title="手动绑定频道" size="lg">
       <div class="ui-alert ui-alert--info u-mb-12">
-        勾选后点确定即把该 EPG 与所选频道绑定；「清空绑定」只清空本次选择，点确定才写回。
+        勾选后点确定即把该 EPG 与所选频道绑定；「清空绑定」只清空本次选择。
       </div>
 
       <div class="ui-inline u-mb-12">

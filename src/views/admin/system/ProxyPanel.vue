@@ -328,13 +328,7 @@ function onTypeChange() {
     <template v-else>
       <div class="ui-alert ui-alert--info" style="margin-bottom: 16px">
         <div>
-          <strong>代理只作用在右边勾选的功能上</strong>，没勾的一律直连。
-          <small class="ui-help" style="display: block; margin-top: 4px">
-            配置写在 config.yml 的 <code>out_proxy</code> 段（容器内 <code>/config/config.yml</code>）。
-            保存代理地址前会实测「连代理 + 访问 GitHub + 访问 Google」，不通过不会写进配置；
-            刚点过「测试代理」且配置没动过时，保存不再重复测一遍。
-            右边四个开关则是拨一下就单独生效。
-          </small>
+          <strong>代理只作用在右边勾选的功能上</strong>，内置多个Github中转站，仅供在线更新使用，订阅源和epg源需要代理时配置。
         </div>
       </div>
 
@@ -474,8 +468,7 @@ function onTypeChange() {
                 </span>
               </div>
               <small class="ui-help" style="display: block; margin-top: 4px">
-                每个开关拨一下就单独生效，不需要再点「保存配置」；四个都可以关着
-                （那就是暂时不用代理）。
+                每个开关单独生效，不需要再点「保存配置」
               </small>
             </div>
           </div>

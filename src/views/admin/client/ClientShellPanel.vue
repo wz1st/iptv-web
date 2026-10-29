@@ -545,10 +545,7 @@ onBeforeUnmount(stopPolling)
               >{{ testing ? '测试中…' : '测试APK地址' }}</button>
             </div>
             <small class="ui-help">
-              提示：只填站点地址，<strong>不要带路径</strong>（编译时自动补
-              {{ props.shell === 'lt' ? '/apk/lt' : '/apk' }}）；
-              「测试APK地址」探测连接是否可达（按当前壳的规则打客户端那条登录路由）：<strong>测试通过会立即保存地址</strong>；
-              若地址为 IPv6 而服务器容器无 IPv6 导致测试失败，会提示是否「强制保存」。确认无误后再点「编译」正式出包。双击输入框解锁后可修改（触屏设备单击即可），解锁时自动填充当前后台地址；若内网访问，请手动填写外网地址。
+              「测试APK地址」探测连接是否可达：<strong>测试通过会立即保存地址</strong>；若地址为 IPv6 而服务器容器无 IPv6 导致测试失败，会提示是否「强制保存」。
             </small>
           </div>
 
@@ -595,10 +592,6 @@ onBeforeUnmount(stopPolling)
           </div>
           <small class="ui-help">
             提示：图片仅支持PNG格式，不超过800KB；多张背景图在客户端随机显示，点缩略图可切换右侧预览。
-            上传的图标与背景会在**编译时**打进安装包；没上传就用基包自带的默认图。
-            <br />
-            两个壳的图标与背景是**各自一套**：这里只改
-            {{ shell === 'lt' ? '骆驼壳' : '清和壳' }} 的图，另一个壳的包不受影响。
           </small>
 
           <!-- ============ 编译基底（底包）============ -->
@@ -633,9 +626,7 @@ onBeforeUnmount(stopPolling)
               <UpdateTip :name="badgeKey" text="发现新基底，点击「在线升级基底」即可更新" />
             </div>
             <small class="ui-help">
-              提示：只接受包名 <code>{{ basePkg || 'xyz.qingh.qhtv' }}</code> 的基包 ——
-              包名参与登录密钥派生，换了包的客户端登录时会解出乱码。
-              换基底后必须重新编译并发布。
+              提示：只接受包名 <code>{{ basePkg || 'xyz.qingh.qhtv' }}</code> 的基包,换基底后必须重新编译并发布。
             </small>
           </div>
 
@@ -697,9 +688,7 @@ onBeforeUnmount(stopPolling)
             </section>
           </div>
           <small class="ui-help">
-            提示：「编译」只产出待发布安装包，线上文件与版本号不动；点「发布」才把新包替换上去，
-            下载页与客户端自升级同时切到新版本。版本号自动取「基底版本 + 末位 +1」，
-            形如 1.0.0.002（编译号恒三位）；换基底后编译号从 001 重新起。
+            提示：「编译」只产出待发布安装包，点「发布」才把新包替换上去，下载页与客户端自升级同时切到新版本。
           </small>
         </div>
 

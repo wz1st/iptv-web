@@ -139,6 +139,9 @@ onMounted(load)
             <div class="ui-field" style="flex: none">
               <label class="ui-field__label">客户端授权</label>
               <AppSwitch v-model="needAuthor" @change="onNeedAuthorChange" />
+              <small class="ui-help">
+                未授权客户端无法登录
+              </small>
             </div>
 
             <div class="ui-field" style="flex: none">
@@ -146,10 +149,6 @@ onMounted(load)
               <AppSwitch v-model="forceUpdate" @change="onForceUpdateChange" />
             </div>
           </div>
-          <small class="ui-help">
-            各项改完立即生效，<strong>不需要重新编译 APK</strong>；清和壳与骆驼壳共用同一份配置。
-            「强制更新」开启后，客户端发现新版本会弹出<strong>无法取消</strong>的更新提示。
-          </small>
         </div>
       </div>
 
