@@ -112,22 +112,35 @@ const showBind = ref(false)
 const bindEpgId = ref('')
 const bindEpgName = ref('')
 const bindChList = ref([])
+const blacklist = ref([])
 const chOptions = ref([])
 const bindLoading = ref(false)
+// 已绑定的频道（后端算出来的，手动 ∪ 自动）—— 拖拽源。
+const boundList = ref([])
+// 正在被拖拽的频道名（拖到黑名单区时高亮）。
+const dragging = ref('')
 
 async function openBind(e) {
   bindEpgId.value = String(e.id ?? '')
   bindEpgName.value = e.name ?? ''
   bindChList.value = []
+  blacklist.value = []
+  boundList.value = []
   showBind.value = true
   bindLoading.value = true
   try {
     const res = await post(A.bindable, { id: Number(bindEpgId.value) || 0 })
-    // 后端返回的是扁平数组 [{value,name,selected}]（dto.EpgsReturnDto），
-    // 不是 {channels, selected} 这样的包装对象 —— 直接当选项用，已绑定的打勾。
-    const list = Array.isArray(res?.data) ? res.data : []
-    chOptions.value = list
-    bindChList.value = list.filter((x) => x.selected).map((x) => String(x.value))
+    // 后端一次给全三样（dto.EpgBindableDto）：
+    //   channels  = 库里现存的频道名（黑名单里的已剔除）；
+    //   selected  = 当前已经绑到这个 EPG 的频道名（拖拽源）；
+    //   blacklist = 这个 EPG 的排除名单（可能有库里没有的名字）。
+    const d = res?.data || {}
+    const channels = Array.isArray(d.channels) ? d.channels : []
+    chOptions.value = channels.map((name) => ({ name, value: name }))
+    boundList.value = Array.isArray(d.selected) ? d.selected : []
+    blacklist.value = Array.isArray(d.blacklist) ? d.blacklist : []
+    // 手动绑定名单 = 已绑定的那些（用户可以在此基础上增删）。
+    bindChList.value = boundList.value.slice()
   } catch { /* 已处理 */ } finally {
     bindLoading.value = false
   }
@@ -136,12 +149,55 @@ async function openBind(e) {
 async function saveBind() {
   await submitAction(
     A.bind,
-    { id: Number(bindEpgId.value) || 0, channels: bindChList.value.join(',') },
+    {
+      id: Number(bindEpgId.value) || 0,
+      channels: bindChList.value.join(','),
+      blacklist: blacklist.value.join(','),
+    },
     { reload: async () => { showBind.value = false; await load() } }
   )
 }
 
 function clearBindSelection() { bindChList.value = [] }
+
+/* ---- 黑名单（排除名单）---- */
+// 语义：这个 EPG 不要这些台 —— 既不被自动规则绑上，也不被手动绑定绑上。
+// 拉黑的动作本身会解绑（后端在重算绑定时把被拉黑的台摘下来）。
+
+/** 把一个频道名拉进黑名单：加名单 + 从手动绑定里摘掉 + 从"已绑定"列表里摘掉。 */
+function addToBlacklist(name) {
+  const n = String(name || '').trim()
+  if (!n) return
+  if (!blacklist.value.includes(n)) blacklist.value = [...blacklist.value, n]
+  bindChList.value = bindChList.value.filter((x) => String(x) !== n)
+  // 它已经被拉黑 ⇒ 不再是"已绑定的频道"，从那一栏里也拿掉，
+  // 否则用户会看到同一个台既在"已绑定"里又在"黑名单"里。
+  boundList.value = boundList.value.filter((x) => String(x) !== n)
+}
+
+/** 从黑名单里移除（取消拉黑）—— 该台会在下次重算绑定时按规则重新绑定。 */
+function removeFromBlacklist(name) {
+  blacklist.value = blacklist.value.filter((x) => String(x) !== name)
+}
+
+/* 拖拽：把「已绑定的频道」拖进黑名单区。 */
+function onDragStart(e, name) {
+  dragging.value = String(name || '')
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move'
+    // Firefox 必须 setData 才会触发 dragstart 之后的 drop。
+    try { e.dataTransfer.setData('text/plain', dragging.value) } catch { /* 忽略 */ }
+  }
+}
+
+function onDragEnd() { dragging.value = '' }
+
+function onDropToBlacklist(e) {
+  e.preventDefault()
+  const name = dragging.value || (e.dataTransfer ? e.dataTransfer.getData('text/plain') : '')
+  if (name) addToBlacklist(name)
+  dragging.value = ''
+}
 
 /* ---- 行操作 ---- */
 // 上线/下线：只改本地这一行，**不重取整页**；失败回滚并弹错误提示。
@@ -371,7 +427,8 @@ async function onLogoUpload(e) {
     <!-- 手动绑定频道 -->
     <AppModal v-model="showBind" title="手动绑定频道" size="lg">
       <div class="ui-alert ui-alert--info u-mb-12">
-        勾选后点确定即把该 EPG 与所选频道绑定；「清空绑定」只清空本次选择。
+        勾选后点确定即把该 EPG 与所选频道绑定；「清空选择」只清空本次勾选。
+        不想绑的台可以<b>拖到下面的黑名单</b>，或直接在黑名单里选/输入名字。
       </div>
 
       <div class="ui-inline u-mb-12">
@@ -381,7 +438,29 @@ async function onLogoUpload(e) {
         <span v-if="bindChList.length" class="ui-badge ui-badge--primary">已选 {{ bindChList.length }} 项</span>
       </div>
 
-      <div class="ui-field u-mb-0">
+      <!-- 已绑定的频道：拖拽源。拖到黑名单区即拉黑（并解除绑定）。 -->
+      <div class="ui-field">
+        <label class="ui-field__label">
+          已绑定的频道
+          <span class="ui-help">把不要的台拖到下面的黑名单即可解除绑定</span>
+        </label>
+        <div v-if="bindLoading" class="ui-table__status"><span class="ui-spinner" />正在加载…</div>
+        <div v-else-if="boundList.length" class="epg-drag-list">
+          <span
+            v-for="n in boundList"
+            :key="n"
+            class="epg-drag-item"
+            draggable="true"
+            title="拖到黑名单区即可排除这个台"
+            @dragstart="onDragStart($event, n)"
+            @dragend="onDragEnd"
+          >{{ n }}</span>
+        </div>
+        <div v-else class="ui-help">当前没有已绑定的频道</div>
+      </div>
+
+      <div class="ui-field">
+        <label class="ui-field__label">手动绑定频道</label>
         <div v-if="bindLoading" class="ui-table__status"><span class="ui-spinner" />正在加载可绑定频道…</div>
         <TagSelect
           v-else
@@ -394,6 +473,38 @@ async function onLogoUpload(e) {
         />
       </div>
 
+      <!-- 黑名单（排除名单）：这个 EPG 不要的台。拖进来 / 选进来 / 输进来都行。 -->
+      <div class="ui-field u-mb-0">
+        <label class="ui-field__label">
+          黑名单（这些台不绑到这个 EPG）
+          <span class="ui-help">可拖入上面的已绑定频道，也可选择现有频道名，或直接输入库里还没有的名字</span>
+        </label>
+        <div
+          class="epg-blacklist-drop"
+          :class="{ 'is-over': !!dragging }"
+          @dragover.prevent
+          @drop="onDropToBlacklist"
+        >
+          <TagSelect
+            v-model="blacklist"
+            :options="chOptions"
+            placeholder="黑名单（可输入未收录的频道名）"
+            filterable
+            creatable
+            direction="down"
+          />
+        </div>
+        <div v-if="blacklist.length" class="epg-blacklist-list">
+          <span
+            v-for="n in blacklist"
+            :key="n"
+            class="epg-blacklist-item"
+            title="点击移出黑名单"
+            @click="removeFromBlacklist(n)"
+          >{{ n }} &times;</span>
+        </div>
+      </div>
+
       <template #footer>
         <button class="ui-btn" type="button" @click="showBind = false">关闭</button>
         <button class="ui-btn ui-btn--primary" type="button" @click="saveBind">确定</button>
@@ -401,3 +512,69 @@ async function onLogoUpload(e) {
     </AppModal>
   </div>
 </template>
+
+<style scoped>
+/* ---- 手动绑定弹窗：已绑定频道（拖拽源） + 黑名单（拖拽目标） ---- */
+
+/* 已绑定的频道：可拖动的标签条。 */
+.epg-drag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  background: var(--c-bg-subtle, transparent);
+  max-height: 132px;
+  overflow-y: auto;
+}
+
+.epg-drag-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--c-border);
+  background: var(--background);
+  font-size: 12.5px;
+  cursor: grab;
+  user-select: none;
+  /* 拖起来的标签别跟着鼠标选中文本 */
+  -webkit-user-drag: element;
+}
+
+.epg-drag-item:active { cursor: grabbing; }
+
+/* 黑名单区：拖拽目标。有东西拖过来时高亮，提示"松手就拉黑"。 */
+.epg-blacklist-drop {
+  border: 1px dashed var(--c-border);
+  border-radius: 6px;
+  padding: 6px;
+  transition: border-color .15s, background-color .15s;
+}
+
+.epg-blacklist-drop.is-over {
+  border-color: var(--c-danger);
+  background: var(--c-danger-soft, rgba(220, 38, 38, .08));
+}
+
+/* 黑名单内容：点一下就移出黑名单。 */
+.epg-blacklist-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.epg-blacklist-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--c-danger);
+  color: var(--c-danger);
+  background: var(--c-danger-soft, rgba(220, 38, 38, .08));
+  font-size: 12.5px;
+  cursor: pointer;
+}
+</style>

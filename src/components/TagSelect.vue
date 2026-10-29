@@ -14,6 +14,10 @@ const props = defineProps({
   // 批量操作区（全选 / 反选 / 清除）：**默认关闭**，只在需要时按需开启。
   // 三个动作都只作用于"当前搜索结果"（filtered），不影响列表外的已选项。
   batchActions: { type: Boolean, default: false },
+  // 允许**输入列表里没有的选项**（默认关闭）。
+  // 开启后搜索框下会出现「添加 xxx」，把搜索词作为一个新选项加进已选。
+  // 用途：黑名单要能录"库里还没有的频道名"，等频道导入后自动生效。
+  creatable: { type: Boolean, default: false },
 })
 const emit = defineEmits(['update:modelValue', 'change'])
 
@@ -111,6 +115,32 @@ function removeTag(val) {
   const next = selected.value.filter((v) => String(v) !== String(val))
   emit('update:modelValue', next)
   emit('change', next)
+}
+
+/* ---------- 新建选项（creatable） ---------- */
+
+/**
+ * 当前搜索词能不能作为一个**新选项**加进去。
+ * 条件：开了 creatable、搜索词非空、选项列表里没有同名项、也没被选过。
+ */
+const canCreate = computed(() => {
+  if (!props.creatable || props.disabled) return false
+  const kw = keyword.value.trim()
+  if (!kw) return false
+  const hit = props.options.some((o) => String(o.name).trim() === kw || String(o.value).trim() === kw)
+  if (hit) return false
+  return !selected.value.some((v) => String(v).trim() === kw)
+})
+
+/** 把搜索词作为一个新选项加进已选（并清掉搜索词，方便连续录入）。 */
+function createOption() {
+  if (!canCreate.value) return
+  const kw = keyword.value.trim()
+  const next = selected.value.slice()
+  next.push(kw)
+  emit('update:modelValue', next)
+  emit('change', next)
+  keyword.value = ''
 }
 
 function clearAll() {
@@ -220,6 +250,13 @@ defineExpose({ clearAll })
       >
         <div v-if="filterable" style="padding: 4px 5px 7px">
           <input v-model="keyword" class="ui-input ui-input--sm" placeholder="搜索…" @click.stop />
+        </div>
+
+        <!-- 新建选项：搜索词不在列表里时，可以把它作为一个新选项加进去。 -->
+        <div v-if="canCreate" style="padding: 0 5px 6px">
+          <button class="ui-btn ui-btn--text ui-btn--xs" type="button" style="width: 100%" @click="createOption">
+            添加「{{ keyword.trim() }}」
+          </button>
         </div>
 
         <!-- 批量操作区：放在搜索框**下方**，三个动作都只作用于当前搜索结果。 -->
