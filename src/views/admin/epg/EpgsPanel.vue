@@ -21,7 +21,6 @@ const recCounts = ref(20)
 
 const epgs = computed(() => data.value?.epgs || [])
 const epgFromDb = computed(() => data.value?.epgFromDb || [])
-const caList = computed(() => data.value?.caList || [])
 const pageCount = computed(() => data.value?.pageCount || 1)
 
 /** EPG 来源选项：0 = CCTV官网，其余来自 epgFromDb */
@@ -29,7 +28,6 @@ const fromOptions = computed(() => [
   { name: 'CCTV官网', value: 0 },
   ...epgFromDb.value.map((e) => ({ name: e.name, value: e.id })),
 ])
-const caOptions = computed(() => caList.value.map((c) => ({ name: c.name, value: c.id })))
 
 async function load() {
   loading.value = true
@@ -53,12 +51,10 @@ function changeRecCount() { page.value = 1; load() }
 const showEdit = ref(false)
 const epgForm = ref({ epgId: '', name: '', epgRemarks: '' })
 const epgFromList = ref([])
-const epgCaList = ref([])
 
 function openAdd() {
   epgForm.value = { epgId: '', name: '', epgRemarks: '' }
   epgFromList.value = []
-  epgCaList.value = []
   showEdit.value = true
 }
 
@@ -80,7 +76,6 @@ function openEdit(e) {
     epgRemarks: e.remarks ?? '',
   }
   epgFromList.value = splitIds(e.fromList)
-  epgCaList.value = splitIds(e.cas)
   showEdit.value = true
 }
 
@@ -94,7 +89,6 @@ async function saveEpg() {
       remarks: epgForm.value.epgRemarks,
       // 后端这两个字段是逗号分隔字符串（旧协议用 params.Get 取数组首元素，
       // 只能拿到第一个 —— 这里明确 join，行为符合原意）
-      caList: epgCaList.value.join(','),
       fromList: epgFromList.value.join(','),
     },
     { reload: async () => { showEdit.value = false; await load() } }
@@ -164,7 +158,7 @@ const delNotFrom = async () => {
 }
 const bindChannel = () => submitAction(A.bindChannel, {}, { reload: load })
 const clearBind = async () => {
-  if (!(await confirm('确定要清空绑定的频道列表吗？手动绑定将会失效不会自动添加！', { okVariant: 'danger' }))) return
+  if (!(await confirm('确定要清空全部绑定吗？将解除所有频道的 EPG 绑定并清空手动绑定名单。', { okVariant: 'danger' }))) return
   await submitAction(A.clearBind, {}, { reload: load })
 }
 const clearCache = async () => {
@@ -349,19 +343,6 @@ async function onLogoUpload(e) {
           placeholder="多个自动绑定规则匹配请用 | 分隔开"
         />
         <small class="ui-help">提示：多个自动绑定规则匹配请用 | 分隔开</small>
-      </div>
-
-      <div class="ui-field u-mb-0">
-        <label class="ui-field__label">自动绑定的分组</label>
-        <small class="ui-help">不在分组内的频道将不会自动绑定</small>
-        <TagSelect
-          v-model="epgCaList"
-          :options="caOptions"
-          placeholder="选择自动绑定哪些频道分类中的频道"
-          filterable
-          batch-actions
-          direction="up"
-        />
       </div>
 
       <template #footer>
