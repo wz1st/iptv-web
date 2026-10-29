@@ -1,5 +1,6 @@
 <script setup>
-// 未授权提示 —— 挂在后台布局上，**每次登录后弹一次**（2026-09-23 第二轮调整）。
+// 未授权提示 —— 挂在后台布局上，**每次进入系统仅弹一次**（sessionStorage 标记，
+// 登录成功 / 退出登录时清除）；初次登录先进「使用说明」引导页，本弹窗等进入主页时再弹。
 import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppModal from '@/components/AppModal.vue'
@@ -25,21 +26,29 @@ function popup() {
   markLicenseNoticeSeen()
 }
 
-onMounted(() => {
+/** 弹窗条件收敛一处：未授权 + 授权账号未登录 + 本轮未弹过 + 当前在主页。 */
+function tryPopup() {
   if (isLic.value) return
   // 授权账号已登录 → 不弹（需求：「登录到系统时，如果授权账号已经登录也不弹出」）。
   // 此时用户的动作应当是"继续用/更新授权"，而不是被提示"去登录授权账号"。
   if (licLogged.value) return
   if (hasSeenLicenseNotice()) return
-  if (route.path === '/admin/engine') return
+  // 只在主页弹：初次登录先进「使用说明」引导页，授权提示等进入主页时再弹。
+  if (route.path !== '/admin/index') return
   popup()
-})
+}
 
-// 使用过程中掉了授权 → 补弹一次。
+onMounted(tryPopup)
+
+// AdminLayout 在引导页就已挂载（onMounted 只跑一次），ack 后进主页是 SPA 内导航，
+// 必须靠路由监听补触发 —— 否则首次登录走完引导流程后弹窗永远不弹。
+watch(() => route.path, tryPopup)
+
+// 使用过程中掉了授权 → 补弹一次（同样限主页）。
 watch(isLic, (now, before) => {
   if (now || !before) return
   if (show.value) return
-  if (route.path === '/admin/engine') return
+  if (route.path !== '/admin/index') return
   popup()
 })
 

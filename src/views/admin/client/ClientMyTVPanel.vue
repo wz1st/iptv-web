@@ -13,9 +13,14 @@ import { notify } from '@/utils/feedback'
 import { confirm } from '@/utils/confirm'
 import { isCoarsePointer } from '@/utils/touchTap'
 import { API, MYTV_ROUTES } from '@/api/endpoints'
+import { useUpdateBadge } from '@/composables/useUpdateBadge'
+import UpdateTip from '@/components/UpdateTip.vue'
 
 const d = ref(null)
 const loading = ref(true)
+
+// 进入本面板即清掉 MyTV 红点（本次登录期内标签/菜单不再挂 MyTV 红点）。
+const { clearBadge, dismissTip } = useUpdateBadge()
 
 /* ---- 编译配置 ---- */
 const serverUrl = ref('')
@@ -117,7 +122,10 @@ async function load() {
     loading.value = false
   }
 }
-onMounted(load)
+onMounted(async () => {
+  await load()
+  clearBadge('mytv')
+})
 
 /* ---------------- 双击输入框解锁 APK 连接地址 ---------------- */
 async function unlockUrl() {
@@ -231,26 +239,31 @@ async function onBaseApkUpload(e) {
    查完分三种出口：无发布只提示、已最新只提示、有更新就走与在线升级**完全相同**的那一段。 */
 async function detectBaseUpdate() {
   if (checking.value || upgrading.value) return
+  // 点「检测更新」按钮即主动清掉 MyTV 基底升级提醒（需求：其余升级相关 tip 在点击对应按钮时主动清除）。
+  dismissTip('mytv')
   checking.value = true
   let c = null
   try {
     // silent：结果由下面三种出口自己报，别再多一条通用成功提示
-    const res = await submitAction(API.adminClientMyTVCheckBase, {}, { silent: true })
+    // noLoading：按钮上已有 spinner 盖住全流程，再叠全屏遮罩只会挡住那个按钮
+    const res = await submitAction(API.adminClientMyTVCheckBase, {}, { silent: true, noLoading: true })
     c = res?.data
     if (!c) { notify(res?.msg || '检测更新失败：GitHub 直连与国内加速都不通', 'danger', 4000); return }
+
+    const route = c.route ? `，经 ${c.route}` : ''
+    if (!c.remote) { notify(`远端还没有基底发布（本地 ${c.local || '-'}）`, 'warning', 3000); return }
+    if (!c.hasUpdate) { notify(`已是最新（本地 ${c.local || '-'}，远端 ${c.remote}）${route}`, 'success', 3000); return }
+    // 按钮的 loading 一路盖到升级结束：确认弹窗那一下也别放用户回去重复点
+    await upgradeBase(c)
   } finally {
     checking.value = false
   }
-
-  const route = c.route ? `，经 ${c.route}` : ''
-  if (!c.remote) { notify(`远端还没有基底发布（本地 ${c.local || '-'}）`, 'warning', 3000); return }
-  if (!c.hasUpdate) { notify(`已是最新（本地 ${c.local || '-'}，远端 ${c.remote}）${route}`, 'success', 3000); return }
-  await upgradeBase(c)
 }
 
 /* ---------------- 编译基底：在线升级 ----------------
-   下载与替换都在后端做（校验包名与版本号那一套与手动上传共用），
-   下载可能要走慢链路，所以用 submitAction 的全屏 loading 兜住这几分钟。 */
+   下载与替换都在后端做（校验包名与版本号那一套与手动上传共用）。
+   下载要走慢链路，但**不挂全屏遮罩** —— 按钮上的转圈已经覆盖了全过程，
+   全屏遮罩反而把用户刚点的那个按钮盖住。 */
 async function upgradeBase(c) {
   const ok = await confirm(
     `确定把编译基底从 ${c.local || '当前版本'} 升级到 ${c.remote} 吗？升级后当前待发布包会作废，需要重新编译并发布。`,
@@ -260,7 +273,7 @@ async function upgradeBase(c) {
 
   upgrading.value = true
   try {
-    await submitAction(API.adminClientMyTVUpgradeBase, {}, { reload: load })
+    await submitAction(API.adminClientMyTVUpgradeBase, {}, { reload: load, noLoading: true })
   } finally {
     upgrading.value = false
   }
@@ -409,8 +422,10 @@ onBeforeUnmount(stopPolling)
               :disabled="checking || upgrading"
               @click="detectBaseUpdate"
             >
-              {{ checking ? '检测中…' : upgrading ? '升级中…' : '检测更新' }}
+              检测更新
+              <span v-if="checking || upgrading" class="ui-btn__spinner" />
             </button>
+            <UpdateTip name="mytv" text="发现新基底，点击「检测更新」即可升级" />
             <button
               class="ui-btn"
               type="button"

@@ -5,7 +5,7 @@ import {
   LogOut, User, Download, KeyRound, Palette, Sun, Moon, Menu,
   TrendingUp, TrendingDown, Trash2, Pencil, Plus, RefreshCw, Search,
   Folder, Film, ShieldCheck, ClipboardList, Copy, ExternalLink, Check,
-  GripVertical, ImagePlus, Ban,
+  GripVertical, ImagePlus, Ban, Globe, Network,
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -39,6 +39,9 @@ const ICONS = {
   folder: Folder,
   film: Film,
   shield: ShieldCheck,
+  // 代理设置页（系统菜单）：globe 菜单项，network 页面里给「连通性测试」用
+  globe: Globe,
+  network: Network,
   clipboard: ClipboardList,
   // 订阅行末尾那两个图标按钮用的（见 views/admin/MealsView.vue）。
   copy: Copy,

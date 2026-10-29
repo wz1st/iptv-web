@@ -1,13 +1,18 @@
 <script setup>
 // 进阶功能 —— 重构自 admin_license.html（426 行）。
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { post } from '@/api/http'
 import { submitAction } from '@/utils/page'
 import { notify } from '@/utils/feedback'
 import { confirm } from '@/utils/confirm'
 import { API, ENGINE_ROUTES } from '@/api/endpoints'
+import { useUpdateBadge } from '@/composables/useUpdateBadge'
+import UpdateTip from '@/components/UpdateTip.vue'
 import AppSwitch from '@/components/AppSwitch.vue'
 import AppModal from '@/components/AppModal.vue'
+
+const router = useRouter()
 
 // ⚠️ 这行 console.log 是**故意保留**的原版行为，别当调试残留清掉：
 console.log('入群密码后半段： 599f2b69')
@@ -49,7 +54,7 @@ const typeText = computed(() => {
     case 0: return '未授权'
     case 1: return '已授权'
     case 2: return '永久授权'
-    default: return '定制授权'
+    default: return '已授权'
   }
 })
 // 有具体原因时用 warning（黄）：它不是"未授权"那种 red 终态，网络恢复会自愈。
@@ -132,7 +137,12 @@ function stopStatePolling() {
 onMounted(async () => {
   await load()
   startStatePolling()
+  // 进入本页即清掉引擎红点（本次登录期内菜单/进阶功能不再挂引擎红点）。
+  clearBadge('engine')
 })
+
+// 引擎有新版本时，菜单/进阶功能/标签的红点由 useUpdateBadge 统一驱动。
+const { hasBadge, clearBadge } = useUpdateBadge()
 
 onBeforeUnmount(stopStatePolling)
 
@@ -193,10 +203,47 @@ async function onToggleShortURL(v) {
   await toggleEngine(ENGINE_ROUTES.shortURL, { enable: v === 1 }, revertTo(shortURL, v), v === 1 ? '已开启短订阅链接' : '已关闭短订阅链接')
 }
 
+/* ---------------- 「立即执行」 ---------------- */
+// 两个开关打开后，紧跟一个「立即执行」按钮：手动跑一次对应功能。
+// 任务由引擎执行（分辨率识别很慢），接口只负责点火，所以这里只提示"已开始"。
+const runningAutoRes = ref(false)
+const runningEpgFuzz = ref(false)
+
+async function runNow(url, flag, okMsg) {
+  if (flag.value) return
+  if (!licensed.value) {
+    notify(licHint.value || '未授权，请先登录授权账号', 'warning', 3000)
+    return
+  }
+  flag.value = true
+  try {
+    const res = await submitAction(url, {}, { silent: true })
+    if (res && res.code >= 1) {
+      notify(res.msg || okMsg, 'success', 3000)
+    } else {
+      notify(res?.msg || '执行失败', 'danger', 3200)
+    }
+  } finally {
+    flag.value = false
+  }
+}
+
+const runAutoResNow = () => runNow(ENGINE_ROUTES.autoResRun, runningAutoRes, '已开始执行分辨率与延迟识别')
+const runEpgFuzzNow = () => runNow(ENGINE_ROUTES.epgFuzzRun, runningEpgFuzz, '已开始执行 EPG 模糊识别')
+
 /* ---------------- 引擎 ---------------- */
+const restarting = ref(false)
+
 async function restartEngine() {
   if (!(await confirm('确定要重启引擎吗？', { okText: '重启', okVariant: 'danger' }))) return
-  await postEngine(ENGINE_ROUTES.restartEngine, {}, { reload: load })
+  restarting.value = true
+  try {
+    // noLoading：重启是长动作，全屏遮罩会正好挡住用户刚点的这个按钮 ——
+    // 加载态收进按钮自己的转圈上（与客户端「在线升级基底」同一取舍）。
+    await postEngine(ENGINE_ROUTES.restartEngine, {}, { reload: load, noLoading: true })
+  } finally {
+    restarting.value = false
+  }
 }
 
 // 引擎日志（实时刷新）
@@ -365,7 +412,10 @@ async function doLogout() {
             引擎状态
             <button class="ui-btn ui-btn--info ui-btn--xs" type="button" @click="openLog">查看日志</button>
           </h4>
-          <button class="ui-btn ui-btn--info" type="button" @click="restartEngine">重启引擎</button>
+          <button class="ui-btn ui-btn--info" type="button" :disabled="restarting" @click="restartEngine">
+            重启引擎
+            <span v-if="restarting" class="ui-btn__spinner" />
+          </button>
         </div>
         <div class="ui-card__body">
           <p class="ui-kv">
@@ -380,6 +430,7 @@ async function doLogout() {
           </p>
           <p class="ui-kv">
             引擎版本：<span class="ui-kv__v">{{ d.version || '-' }}</span>
+            <UpdateTip name="engine" text="发现新版本，点击对应按钮即可升级引擎" />
           </p>
         </div>
       </div>
@@ -430,6 +481,17 @@ async function doLogout() {
           <div class="ui-inline" style="margin-bottom: 12px">
             <span class="ui-field__label" style="margin: 0">自动识别:</span>
             <AppSwitch v-model="autoRes" :disabled="!licensed" @change="onToggleAutoRes" />
+            <!-- 开关打开后才出现：手动跑一次全量分辨率与延迟识别 -->
+            <button
+              v-if="autoRes"
+              class="ui-btn ui-btn--info ui-btn--xs"
+              type="button"
+              style="margin-left: 10px"
+              :disabled="!licensed || runningAutoRes"
+              @click="runAutoResNow"
+            >
+              {{ runningAutoRes ? '执行中…' : '立即执行' }}
+            </button>
           </div>
           <small class="ui-help ui-help--ink">提示：源更新时自动测试分辨率和延迟，CPU、内存占用较大，谨慎开启！！！可以在「频道管理 → 频道分组 → EPG管理」里手动单条测速、测分辨率。</small>
 
@@ -451,6 +513,17 @@ async function doLogout() {
           <div class="ui-inline" style="margin-bottom: 12px">
             <span class="ui-field__label" style="margin: 0">EPG模糊识别:</span>
             <AppSwitch v-model="epgFuzz" :disabled="!licensed" @change="onToggleEpgFuzz" />
+            <!-- 开关打开后才出现：手动跑一次 EPG 模糊匹配（点它才执行） -->
+            <button
+              v-if="epgFuzz"
+              class="ui-btn ui-btn--info ui-btn--xs"
+              type="button"
+              style="margin-left: 10px"
+              :disabled="!licensed || runningEpgFuzz"
+              @click="runEpgFuzzNow"
+            >
+              {{ runningEpgFuzz ? '执行中…' : '立即执行' }}
+            </button>
           </div>
           <small class="ui-help ui-help--ink">提示：频道自动绑定未识别时启用模糊识别，以提升识别成功率。存在识别错误问题，谨慎开启。</small>
         </div>
@@ -567,4 +640,14 @@ async function doLogout() {
 /* 只读展示统一走全局 .ui-kv（原先这里是同名 scoped .kv，已合并进 style.css） */
 /* .sep 随中转那三个输入框一起删除（"协议://地址:端口"那行的分隔符，已无用处） */
 /* .is-locked（pointer-events:none + opacity:.6 灰显）已随"未授权整块不渲染"一起 */
+/* 引擎有新版时，「在线升级」按钮内的红色小圆点（与菜单红点同源）。 */
+.eng-update-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--c-danger);
+  vertical-align: middle;
+}
 </style>

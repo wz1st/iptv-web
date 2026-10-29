@@ -9,9 +9,11 @@ import ClientMyTVPanel from './client/ClientMyTVPanel.vue'
 import ClientCustomPanel from './client/ClientCustomPanel.vue'
 // 公告已搬到 设备管理 → 下发设置（/admin/deliver），这里不再import
 import { isLic, isCustom } from '@/utils/site'
+import { useUpdateBadge } from '@/composables/useUpdateBadge'
 
 const route = useRoute()
 const router = useRouter()
+const { hasBadge, clearBadge } = useUpdateBadge()
 
 const TABS = computed(() => {
   // ★ 四个标签**同一行**：骆驼壳 / 清和壳 / MyTV客户端 / 定制APK。
@@ -29,12 +31,14 @@ const TABS = computed(() => {
       label: '骆驼壳',
       path: '/admin/client',
       hint: '骆驼壳（Client_lt.apk 基底）：连接地址、应用名、图标背景、编译与发布、基底升级',
+      badge: hasBadge('lt'),
     },
     {
       key: 'qh',
       label: '清和壳',
       path: '/admin/clientQh',
       hint: '清和壳（Client.apk 基底）：与骆驼壳各自独立编译、发布、图标背景',
+      badge: hasBadge('qh'),
     },
   ]
   if (isLic.value) {
@@ -43,6 +47,7 @@ const TABS = computed(() => {
       label: 'MyTV客户端',
       path: '/admin/clientMyTV',
       hint: 'MyTV 版 APK 的版本与更新内容',
+      badge: hasBadge('mytv'),
     })
   }
   // 定制APK：只有定制授权（dao.License.Type == 4）才出现。

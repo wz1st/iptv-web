@@ -26,7 +26,7 @@ const emit = defineEmits(['update:modelValue', 'toggle-off'])
 
 /** 行高（px）—— 必须与 CSS 里的 `--lned-lh` 一致，行号/色带都按它算偏移 */
 const LINE_H = 20
-/** textarea 的 padding-top（px）—— 与 `.lned__ta` 的 CSS 一致 */
+/** textarea 的 padding-top（px）—— 必须与 CSS 里的 `--lned-pt` 一致 */
 const PAD_TOP = 8
 
 const taEl = ref(null)
@@ -193,7 +193,7 @@ onBeforeUnmount(() => {
         class="ui-textarea lned__ta"
         :value="modelValue"
         :readonly="readonly"
-        :rows="rows"
+        :rows="effectiveRows"
         :placeholder="placeholder"
         :title="hoverTip"
         wrap="off"
@@ -229,6 +229,9 @@ onBeforeUnmount(() => {
   --lned-gutter-pad-r: 4px;
   /** 停用红条宽度（行号列里的竖条） */
   --lned-offbar: 2px;
+  /* 上下内边距。**三处（行号列 / 行号列内容 / 文本区）必须一致**，
+     否则首行行号与首行文字错位。JS 侧的 PAD_TOP 也是这个值。 */
+  --lned-pt: 8px;
   display: flex;
   align-items: stretch;
   border: 1px solid var(--input);
@@ -236,9 +239,9 @@ onBeforeUnmount(() => {
   background: var(--background);
   overflow: hidden;
 }
-/* 带切换按钮时取 **45px**（2026-09-22 定稿：先按需求收到的 35/40 都太挤， */
+/* 带切换按钮时加宽：左边放按钮、右边放行号，中间还要留得下 4 位数行号。 */
 .lned.is-toggleable {
-  --lned-gutter: 45px;
+  --lned-gutter: 62px;
 }
 /* 聚焦环画在整体外壳上（textarea 自己的边框被去掉，见 .lned__ta） */
 .lned:focus-within {
@@ -249,23 +252,34 @@ onBeforeUnmount(() => {
 /* ---------- 行号列 ---------- */
 .lned__gutter {
   flex: none;
+  /* 总宽含内边距与边框：宽度好算，也免得"内容盒 + 内边距"溢出外框。 */
+  box-sizing: border-box;
   width: var(--lned-gutter);
-  /* 右侧留白由 --lned-gutter-pad-r 给（同时决定停用红条的落点，见 .lned 里的注释）。 */
-  padding: 8px var(--lned-gutter-pad-r) 8px 0;
+  /* absolute 的行号列以它为定位基准 */
+  position: relative;
+  /* 左右留白：左边让出按钮的位置，右边让出停用红条与中缝的呼吸位。 */
+  padding: var(--lned-pt) var(--lned-gutter-pad-r) var(--lned-pt) var(--lned-gutter-pad-l);
   overflow: hidden;
   background: var(--muted);
   border-right: 1px solid var(--border);
   user-select: none;
 }
 .lned__gutter-inner {
-  /* 位移由内联 style 给（跟随 textarea 滚动），这里只负责"它会动" */
+  /* 绝对定位：**不撑开行号列的高度**（否则行号列比文本区高，
+     会出现"下半截只有行号没有内容"）。超出部分由 gutter 的 overflow 裁掉，
+     滚动时靠 translateY 跟随文本区。
+     ★ left/right 必须给到内边距处：绝对定位的包含块是**内边距盒**，
+     只写 left:0 会让这一层按内容宽度收缩 —— 行号于是挤在左边，
+     右侧空出一大片，"行号右对齐"直接落空（这就是截图里的样子）。 */
+  position: absolute;
+  top: var(--lned-pt);
+  left: var(--lned-gutter-pad-l);
+  right: var(--lned-gutter-pad-r);
   will-change: transform;
 }
 .lned__no {
   display: flex;
   align-items: center;
-  /* 按钮与数字之间只留 1px：行号列缩窄后，这点间隙就是 4 位数行号的余量 */
-  gap: 1px;
   height: var(--lned-lh);
   line-height: var(--lned-lh);
   font-size: 11px;
@@ -275,10 +289,17 @@ onBeforeUnmount(() => {
   position: relative;
 }
 .lned__num {
-  flex: 1 1 auto;
-  min-width: 0;
+  /* 行号**右对齐**：靠 margin-left:auto 顶到行号列右缘。
+     不用 justify-content:space-between —— 那一套在没有按钮的只读态下
+     会把唯一的孩子推到左边（flex-start），行号反而变成左对齐。 */
+  flex: 0 0 auto;
+  margin-left: auto;
+  /* 与停用红条之间留 2px，数字不压红条。 */
+  padding-right: 2px;
   text-align: right;
   font-family: var(--font-mono);
+  /* 3 位数起步：位数少时行号列右侧也是齐的，不会左移。 */
+  min-width: 3ch;
 }
 .lned__no:hover { color: var(--foreground); }
 /* 停用行：行号染危险色 + 右侧一条 2px 竖条，扫一眼就知道哪几行不参与复制 */
@@ -286,13 +307,15 @@ onBeforeUnmount(() => {
   color: var(--destructive);
   font-weight: 600;
 }
-/* 停用标记。**必须画在 .lned__no 之外**（挪进本列的右侧留白里）： */
+/* 停用标记。**必须画在 .lned__no 之外**（挪进本列的右侧留白里）：
+   画在列内会盖住行号，画在留白最外侧又会顶到中缝的边框上，
+   所以落在"留白里侧 2px"——既不压数字，也不压框。 */
 .lned__no.is-off::after {
   content: '';
   position: absolute;
   top: 0;
   bottom: 0;
-  right: calc(-1 * var(--lned-gutter-pad-r));
+  right: calc(-1 * var(--lned-gutter-pad-r) + 2px);
   width: var(--lned-offbar);
   background: var(--destructive);
 }
@@ -343,7 +366,7 @@ onBeforeUnmount(() => {
   border: 0;
   border-radius: 0;
   background: transparent;
-  padding: 8px 44px 8px 11px;
+  padding: var(--lned-pt) 44px var(--lned-pt) 11px;
   font-family: var(--font-mono);
   font-size: 12.5px;
   line-height: var(--lned-lh);

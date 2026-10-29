@@ -43,6 +43,7 @@ const loading = ref(true)
 const decoder = ref(0)
 const buffTimeout = ref(10)
 const needAuthor = ref(false)
+const forceUpdate = ref(false)
 const tips = ref({
   loading: '',
   userExpired: '',
@@ -68,6 +69,7 @@ async function load() {
     decoder.value = Number(app.decoder ?? 0)
     buffTimeout.value = Number(app.buffTimeout ?? 10)
     needAuthor.value = Number(app.needAuthor ?? 0) === 1
+    forceUpdate.value = Number(app.forceUpdate ?? 0) === 1
     const t = g.tips || {}
     tips.value = {
       loading: t.loading || '',
@@ -98,6 +100,11 @@ async function onBuffChange() {
 async function onNeedAuthorChange(v) {
   const res = await post(A.needAuthor, { needAuthor: v ? 1 : 0 })
   notify(res?.msg || (res?.code >= 1 ? '授权设置已保存' : '保存失败'), res?.code >= 1 ? 'success' : 'danger')
+}
+
+async function onForceUpdateChange(v) {
+  const res = await post(A.forceUpdate, { forceUpdate: v ? 1 : 0 })
+  notify(res?.msg || (res?.code >= 1 ? '强制更新已保存' : '保存失败'), res?.code >= 1 ? 'success' : 'danger')
 }
 
 async function saveTips() {
@@ -151,6 +158,11 @@ onMounted(load)
                 <small class="ui-help">
                   未授权客户端无法登录
                 </small>
+              </div>
+
+              <div class="ui-field" style="flex: none">
+                <label class="ui-field__label">强制更新</label>
+                <AppSwitch v-model="forceUpdate" @change="onForceUpdateChange" />
               </div>
             </div>
             <small class="ui-help">

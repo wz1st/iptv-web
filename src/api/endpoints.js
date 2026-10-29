@@ -27,22 +27,22 @@ export const API = {
   adminClientData: '/api/client/data',
   adminClientMyTVData: '/api/clientMyTV/data',
   adminAdminsData: '/api/admins/data',
-  adminUpdataData: '/api/updata/data',
-  adminAboutData: '/api/about/data',
+  adminGuideData: '/api/guide/data',
+  adminGuideAck: '/api/guide/ack',
   adminEngineData: '/api/engine/data',
   // SSL 证书（系统菜单）：证书信息、开关、nginx 版本、文件路径
   adminSslData: '/api/ssl/data',
+  // 出网代理（系统菜单）：协议/地址/端口/账密/作用范围
+  adminProxyData: '/api/proxy/data',
 
   // ---- 只读探测 / 轮询（同样是 POST，只是没有参数）----
   adminEngineCheckProxy: '/api/engine/checkProxy',
   adminEngineLog: '/api/engine/log',
   adminClientBuildStatus: '/api/client/buildStatus',
   adminClientMyTVBuildStatus: '/api/clientMyTV/buildStatus',
-  adminUpdataCheckWeb: '/api/updata/checkWeb',
-  adminUpdataCheckEngine: '/api/updata/checkEngine',
-  adminUpdataDownWeb: '/api/updata/downWeb',
-  adminUpdataDownEngine: '/api/updata/downEngine',
-  adminUpdata: '/api/updata/run',
+  // 登录后静默盘点 APK 基底新版本（清和壳 / 骆驼壳 / MyTV），给菜单/标签红点用。
+  // 定制分支不做管理系统自身在线升级（换镜像更新），故无 updata/* 自检端点。
+  adminClientSilentCheck: '/api/client/silentCheck',
 
   // ---- 文件上传（multipart/form-data，不参与 JSON 化）----
   // 客户端图标 / 背景的上传**不在这一组**：这两个是**按壳分**的端点（清和壳
@@ -165,6 +165,7 @@ export const CLIENT_ROUTES = {
   decoder: '/api/client/decoder',
   buffTimeout: '/api/client/buffTimeout',
   needAuthor: '/api/client/needAuthor',
+  forceUpdate: '/api/client/forceUpdate',
   appInfo: '/api/client/appInfo',
   // 「保存并测试」拆两步：这条只探测可达性，不落盘也不触发编译
   // （编译是分钟级重活，每改一个字就编一次会把队列打满）。
@@ -233,8 +234,12 @@ export const ENGINE_ROUTES = {
   proxy: '/api/engine/proxy',
   restartEngine: '/api/engine/restart',
   autoRes: '/api/engine/autoRes',
+  // 「立即执行」：开关已开时手动触发一次全量分辨率与延迟识别
+  autoResRun: '/api/engine/autoResRun',
   disCh: '/api/engine/disCh',
   epgFuzz: '/api/engine/epgFuzz',
+  // 「立即执行」：开关已开时手动触发一次 EPG 模糊识别
+  epgFuzzRun: '/api/engine/epgFuzzRun',
   register: '/api/engine/register',
   login: '/api/engine/login',
   changePwd: '/api/engine/changePwd',
@@ -264,6 +269,18 @@ export const SSL_ROUTES = {
   save: '/api/ssl/save',
   // 清除：删掉证书与私钥，并把两个开关一起关掉
   clear: '/api/ssl/clear',
+}
+
+/** 出网代理（/api/proxy）—— 协议/地址/端口/账密/作用范围落在 config.yml 的 out_proxy 段 */
+export const PROXY_ROUTES = {
+  // 只测不存：连代理 + 访问 GitHub/Google，失败时 data.failType 区分
+  // dial（代理连不通）与 overseas（能连但出不去）
+  test: '/api/proxy/test',
+  // 保存连接参数（协议/地址/端口/账密）：有代理时服务端内部会再测一次，
+  // 不通过一律不落盘；选「无代理」时跳过测试直接存。**不带**作用范围开关。
+  save: '/api/proxy/save',
+  // 单独改一个作用范围开关（useEpg/useSrc/useUp/useRelay），拨一下即生效
+  scope: '/api/proxy/scope',
 }
 
 /** 只有一个动作的资源：端点即动作（补上动作名后统一两段式） */

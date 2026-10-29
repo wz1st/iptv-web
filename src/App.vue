@@ -8,6 +8,9 @@ import ConfirmHost from '@/components/ConfirmHost.vue'
 import { useTheme } from '@/composables/useTheme'
 
 const { isDark } = useTheme()
+
+// 定制分支整体移除管理系统「自身在线升级」遮罩（换镜像更新），
+// 但保留客户端 / 引擎 / 骆驼壳基底的在线升级提示。
 </script>
 
 <template>

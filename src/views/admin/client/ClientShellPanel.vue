@@ -10,6 +10,8 @@ import { notify } from '@/utils/feedback'
 import { confirm } from '@/utils/confirm'
 import { isCoarsePointer } from '@/utils/touchTap'
 import { API, CLIENT_ROUTES, CLIENT_ROUTES_LT } from '@/api/endpoints'
+import { useUpdateBadge } from '@/composables/useUpdateBadge'
+import UpdateTip from '@/components/UpdateTip.vue'
 
 // shell 决定走哪一套客户端：
 //   'lt'     骆驼壳 = 独立基底 Client_lt.apk 那套（/api/client/lt，**主槽位**，走 smali 注入地址）
@@ -32,6 +34,10 @@ const uploadBaseUrl = props.shell === 'lt' ? API.adminClientLtUploadBase : API.a
 // /lt/images/。写错时后端上传是成功的，只是预览永远 404（静默）。
 const ICON_PREFIX = props.shell === 'lt' ? '/lt/icon/' : '/icon/'
 const BJ_PREFIX = props.shell === 'lt' ? '/lt/images/' : '/images/'
+
+// 本壳对应的红点键：清和壳=qh，骆驼壳=lt。进入本面板即清掉对应红点。
+const badgeKey = props.shell === 'lt' ? 'lt' : 'qh'
+const { clearBadge, dismissTip } = useUpdateBadge()
 
 const d = ref(null)
 const loading = ref(true)
@@ -63,6 +69,7 @@ const newApkName = ref('')
 const baseVersion = ref('')
 const basePkg = ref('')
 const baseInput = ref(null)
+const baseBusy = ref(false)   // 在线升级基底：查询+确认+替换全程置灰转圈
 
 const iconUrl = ref('')
 const bjList = ref([])          // [{ name, url }]
@@ -217,7 +224,10 @@ async function load() {
     loading.value = false
   }
 }
-onMounted(load)
+onMounted(async () => {
+  await load()
+  clearBadge(badgeKey)
+})
 
 /* ---------------- 双击输入框解锁 APK 连接地址 ---------------- */
 async function unlockUrl() {
@@ -373,24 +383,34 @@ async function onBasePick(e) {
 
 /** 在线查 + 升级合成一个入口：先查，有新版才问要不要升。 */
 async function checkAndUpgradeBase() {
-  const res = await submitAction(A.checkBase, {})
-  if (res?.code !== 1) return
-  const c = res.data || {}
-  if (!c.remote) {
-    notify(`远端还没有基底发布（本地 ${c.local || '-'}）`, 'warning', 3000)
-    return
+  if (baseBusy.value) return
+  // 点「在线升级基底」按钮即主动清掉本条升级提醒（需求：其余升级相关 tip 在点击对应按钮时主动清除）。
+  dismissTip(badgeKey)
+  baseBusy.value = true
+  try {
+    // noLoading：这条链路要走几分钟（下载远端基底），按钮上已经有转圈，
+    // 再叠一层全屏遮罩只会把用户刚点的那个按钮整个盖住。
+    const res = await submitAction(A.checkBase, {}, { noLoading: true })
+    if (res?.code !== 1) return
+    const c = res.data || {}
+    if (!c.remote) {
+      notify(`远端还没有基底发布（本地 ${c.local || '-'}）`, 'warning', 3000)
+      return
+    }
+    if (!c.hasUpdate) {
+      notify(res.msg || `当前已是最新基底版本 ${c.local}`, 'success', 3000)
+      return
+    }
+    const ok = await confirm(
+      res.msg || `确定把编译基底从 ${c.local || '当前版本'} 升级到 ${c.remote} 吗？` +
+        '升级后当前待发布包会作废，需要重新编译并发布。',
+      { okText: '在线升级', okVariant: 'danger' }
+    )
+    if (!ok) return
+    await submitAction(A.upgradeBase, {}, { reload: load, noLoading: true })
+  } finally {
+    baseBusy.value = false
   }
-  if (!c.hasUpdate) {
-    notify(res.msg || `当前已是最新基底版本 ${c.local}`, 'success', 3000)
-    return
-  }
-  const ok = await confirm(
-    res.msg || `确定把编译基底从 ${c.local || '当前版本'} 升级到 ${c.remote} 吗？` +
-      '升级后当前待发布包会作废，需要重新编译并发布。',
-    { okText: '在线升级', okVariant: 'danger' }
-  )
-  if (!ok) return
-  await submitAction(A.upgradeBase, {}, { reload: load })
 }
 
 /* ---------------- 编译：只产出「待发布」包，线上一个字节都不动 ---------------- */
@@ -622,7 +642,11 @@ onBeforeUnmount(stopPolling)
                 <input ref="baseInput" type="file" accept=".apk,application/vnd.android.package-archive"
                   style="display: none" @change="onBasePick" />
               </label>
-              <button class="ui-btn" type="button" @click="checkAndUpgradeBase">在线升级基底</button>
+              <button class="ui-btn" type="button" :disabled="baseBusy" @click="checkAndUpgradeBase">
+                在线升级基底
+                <span v-if="baseBusy" class="ui-btn__spinner" />
+              </button>
+              <UpdateTip :name="badgeKey" text="发现新基底，点击「在线升级基底」即可更新" />
             </div>
             <small class="ui-help">
               提示：只接受包名 <code>{{ basePkg || 'xyz.qingh.qhtv' }}</code> 的基包,换基底后必须重新编译并发布。

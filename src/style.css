@@ -426,6 +426,30 @@ h1, h2, h3, h4, h5, h6 {
 .ui-btn--lg { padding: 10px 20px; font-size: 15px; }
 .ui-btn--block { width: 100%; }
 
+/* ---------- 按钮加载态 ---------- */
+/* 用法：按钮置 :disabled 的同时塞一个 <span class="ui-btn__spinner" />。
+   覆盖层用按钮自己的背景色（background: inherit 取的是父元素即按钮的计算值）
+   盖住文字，中间一个转圈。
+   加载态单独把置灰调淡（:has 只认带转圈的按钮，普通 disabled 不受影响）：
+   父级 opacity 会连带把转圈一起冲淡，所以这里反而要留够对比，
+   转圈的深色也往上提，避免"淡灰底 + 淡灰圈"糊成一团。 */
+.ui-btn { position: relative; }
+.ui-btn:has(> .ui-btn__spinner):disabled { opacity: .72; }
+.ui-btn__spinner {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: inherit;
+  border-radius: inherit;
+  cursor: not-allowed;
+}
+.ui-btn__spinner::before {
+  content: "";
+  width: 15px; height: 15px; border-radius: 50%;
+  border: 2px solid oklab(0% 0 0 / 0.22);
+  border-top-color: oklab(0% 0 0 / 0.95);
+  animation: ui-spin 0.7s linear infinite;
+}
+
 /* ---------- Card ---------- */
 .ui-card {
   background: var(--card);
@@ -808,6 +832,57 @@ html[data-theme="dark"] .ui-help--ink { color: #fff; }
   animation: ui-spin .7s linear infinite;
 }
 @keyframes ui-spin { to { transform: rotate(360deg); } }
+
+/* ---------- 在线升级遮罩 ---------- */
+/* z-index 必须高于 .ui-loading-layer(2900)：升级期间其它请求陆续失败，
+   前端会顺手 loadingShow()，那个转圈不该浮在升级遮罩上面。 */
+.ui-upgrade-mask {
+  position: fixed; inset: 0; z-index: 3200;
+  background: color-mix(in oklab, var(--background) 78%, transparent);
+  backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.ui-upgrade-card {
+  width: min(480px, 100%);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 12px 40px 0 oklab(0% 0 0 / 0.18);
+  padding: 28px 24px 22px;
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.ui-upgrade-card .ui-spinner { margin-bottom: 2px; }
+.ui-upgrade-title { margin: 0; font-size: 16px; font-weight: 600; }
+.ui-upgrade-msg { margin: 0; font-size: 13px; color: var(--muted-foreground); min-height: 20px; }
+.ui-upgrade-note {
+  margin: 6px 0 0; font-size: 12px; line-height: 1.6;
+  color: var(--muted-foreground);
+  border-top: 1px solid var(--border); padding-top: 12px; width: 100%;
+}
+/* 进度条：宽度用 transition 过渡，但**不做动画回退** —— api 重启那一拍
+   会连着来好几次轮询，卡顿感反而像卡死。 */
+.ui-progress {
+  width: 100%; height: 8px; margin-top: 6px;
+  background: var(--border); border-radius: 999px; overflow: hidden;
+}
+.ui-progress__bar {
+  height: 100%; border-radius: 999px;
+  background: var(--foreground);
+  transition: width .4s ease;
+}
+
+/* ---------- 下载遮罩 ---------- */
+/* 层级 3100：高于 .ui-loading-layer(2900)、低于 .ui-upgrade-mask(3200)。
+   - 高于 loading：下载期间其它请求会陆续失败，前端可能顺手 loadingShow()，
+     那个转圈不该浮在下载遮罩上面。
+   - 低于升级遮罩：两者理论上不同时出现（下载完才轮得到升级），
+     留出余量免得将来叠罩时升级遮罩被压住。
+   样式复用 .ui-upgrade-mask 的其余部分（同一张卡片、同一根进度条）。 */
+.ui-download-mask {
+  z-index: 3100;
+}
 
 /* ---------- Pagination ---------- */
 .ui-pager {

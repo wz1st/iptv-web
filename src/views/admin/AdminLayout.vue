@@ -1,10 +1,11 @@
 <script setup>
 // 后台布局 —— shadcn-vue 的侧栏壳（与 One-KVM 的设置页同一套结构）。
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '@/components/AppIcon.vue'
 import ImageZoom from '@/components/ImageZoom.vue'
 import LicenseNotice from '@/components/LicenseNotice.vue'
+import SponsorDialog from '@/components/SponsorDialog.vue'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -19,17 +20,36 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import NavMenuButton from '@/components/admin/NavMenuButton.vue'
-import NavLink from '@/components/admin/NavLink.vue'
 import { Sun, Moon, LogOut, Download } from 'lucide-vue-next'
-import { siteName, version, isCustom } from '@/utils/site'
+import { siteName, version, isCustom, guideAck } from '@/utils/site'
 import { API } from '@/api/endpoints'
 import { confirm } from '@/utils/confirm'
 import { clearLicenseNoticeSeen } from '@/utils/licenseNotice'
 import { useTheme } from '@/composables/useTheme'
+import { useUpdateBadge } from '@/composables/useUpdateBadge'
 
 const route = useRoute()
 const router = useRouter()
 const { isDark, toggleTheme } = useTheme()
+const { hasBadge, runSilentCheck } = useUpdateBadge()
+
+// 进入后台（登录后）静默盘点各组件新版本，给菜单/标签挂红点。只跑一次，
+// 失败静默（后端不写 Docker 日志）；红点/提醒的有效期 = 本次登录会话。
+onMounted(runSilentCheck)
+
+// 菜单项的红点：把"组件键"聚合成"菜单入口"。
+//   在线升级 → 管理系统(web) 或 引擎(engine) 任一有新版本
+//   客户端设置 → 清和(qh) / 骆驼(lt) / MyTV(mytv) 任一有新版本
+//   进阶功能 → 引擎(engine) 有新版本
+function menuBadge(key) {
+  if (key === 'updata') return hasBadge('web') || hasBadge('engine')
+  if (key === 'client') return hasBadge('qh') || hasBadge('lt') || hasBadge('mytv')
+  if (key === 'engine') return hasBadge('engine')
+  return false
+}
+
+// 赞助作者弹窗（升级日志页已取消，赞助入口改为弹窗）。
+const sponsorOpen = ref(false)
 
 // 「点击跳转 + 移动端跳完立刻关 sheet」不能在 AdminLayout 的 setup 里做：
 
@@ -74,7 +94,8 @@ const MENU_GROUPS = computed(() => [
     items: [
       // 进阶功能：授权引擎。路径与接口已随引擎改名 license → engine
       { key: 'engine', label: '进阶功能', icon: 'key', paths: ['/admin/engine'] },
-      { key: 'about', label: '升级日志', icon: 'info', paths: ['/admin/about'] },
+      // 使用说明置于整个菜单卡片最末
+      { key: 'guide', label: '使用说明', icon: 'clipboard', paths: ['/admin/guide'] },
     ],
   },
 ])
@@ -90,6 +111,8 @@ function sysItems() {
     { key: 'admins', label: '管理员设置', icon: 'user', paths: ['/admin/admins'] },
     // HTTPS：上传/粘贴证书、开关 443 与 80 强制跳转、查看证书信息
     { key: 'ssl', label: 'SSL 证书', icon: 'shield', paths: ['/admin/ssl'] },
+    // 出网代理：可分别作用于 EPG 更新 / 频道源更新 / 在线升级 / 中转取流
+    { key: 'proxy', label: '代理设置', icon: 'globe', paths: ['/admin/proxy'] },
   ]
   if (isCustom.value) {
     list.push({ key: 'dlEdit', label: '下载页编辑', icon: 'palette', paths: ['/admin/dlEdit'] })
@@ -166,7 +189,7 @@ async function logout() {
 
     <SidebarProvider class="min-h-0 flex-1">
       <!-- top-14 = 顶栏高度：侧栏从顶栏下面开始，不从视口顶端开始 -->
-      <Sidebar collapsible="offcanvas" class="top-14 h-[calc(100dvh-3.5rem)]">
+      <Sidebar v-show="guideAck" collapsible="offcanvas" class="top-14 h-[calc(100dvh-3.5rem)]">
         <SidebarContent class="gap-0 px-2 py-3">
           <SidebarGroup v-for="group in MENU_GROUPS" :key="group.key" class="px-0 py-1">
             <SidebarGroupLabel v-if="group.title">{{ group.title }}</SidebarGroupLabel>
@@ -175,6 +198,7 @@ async function logout() {
                 <NavMenuButton
                   :to="item.paths[0]"
                   :is-active="isActive(item)"
+                  :badge="menuBadge(item.key)"
                   :tooltip="item.label"
                   class="h-9 text-foreground data-[active=true]:bg-primary data-[active=true]:font-medium data-[active=true]:text-primary-foreground data-[active=true]:shadow-sm data-[active=true]:hover:bg-primary data-[active=true]:hover:text-primary-foreground"
                 >
@@ -186,11 +210,18 @@ async function logout() {
           </SidebarGroup>
         </SidebarContent>
 
-        <div class="mt-auto shrink-0 border-t px-4 py-3 text-center text-[11.5px] text-muted-foreground">
+        <!-- 侧栏底部：版本号 + 两个外链。行距与内边距都压到最小 ——
+             这一块常驻可见，占太高会把上面的菜单挤到需要滚动。 -->
+        <div class="mt-auto shrink-0 border-t px-4 py-1.5 text-center text-[11.5px] leading-tight text-muted-foreground">
           <p class="m-0">{{ version }}</p>
-          <p class="m-0 mt-1 flex justify-center gap-3">
+          <p class="m-0 mt-0.5 flex justify-center gap-3">
             <a href="https://www.qingh.xyz" target="_blank" rel="noopener">清和博客</a>
-            <NavLink to="/admin/about#bottom">赞助作者</NavLink>
+            <!-- 赞助作者：弹窗展示两个收款码（升级日志页已取消，这里不再跳页） -->
+            <button
+              type="button"
+              class="border-0 bg-transparent p-0 font-inherit text-inherit cursor-pointer hover:underline"
+              @click="sponsorOpen = true"
+            >赞助作者</button>
           </p>
         </div>
       </Sidebar>
@@ -223,5 +254,8 @@ async function logout() {
 
     <!-- 未授权提示：挂一份在布局上 = 进后台时判一次（组件内部用 onMounted， -->
     <LicenseNotice />
+
+    <!-- 赞助作者：两个收款二维码（升级日志页已取消） -->
+    <SponsorDialog v-model="sponsorOpen" />
   </div>
 </template>

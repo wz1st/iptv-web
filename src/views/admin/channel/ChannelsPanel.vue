@@ -1088,7 +1088,9 @@ const TYPE_LABEL = {
       <!-- ============ 弹窗：编辑频道（频道列表） ============ -->
       <!-- 普通分组：源地址视图**可编辑**（改内容 / 调顺序 / 增删行，点「保存」 -->
       <!-- 整表提交，POST /api/channels/chImport，文本即真值 —— 行的先后就是最终…… -->
-      <AppModal v-model="showTxt" title="编辑频道" size="lg">
+      <!-- ★ close-on-mask=false：点框外**不关**这个弹窗。它里面是一整张可编辑的 -->
+      <!-- 频道表，误点遮罩就丢掉正在编辑的内容，代价太大（其它弹窗仍保持可点外关）。 -->
+      <AppModal v-model="showTxt" title="编辑频道" size="lg" :close-on-mask="false">
         <div class="ui-field">
           <label class="ui-field__label">分组名称</label>
           <div class="ui-ro">{{ txtForm.caname }}</div>
@@ -1183,9 +1185,11 @@ const TYPE_LABEL = {
                 <th class="u-center" style="width: 100px">分辨率</th>
                 <!-- 延迟 = iptv_channels.speed（引擎测速写入，api 原样下发）。 -->
                 <th class="u-center" style="width: 90px">延迟</th>
-                <th class="u-center" style="width: 180px">EPG</th>
+                <!-- EPG 列只放一个绑定上的 EPG 名，收窄到 120px；省下的宽度让给 URL。 -->
+                <th class="u-center" style="width: 120px">EPG</th>
                 <th class="u-center" style="width: 110px">LOGO</th>
-                <th class="u-center" style="width: 190px">操作</th>
+                <!-- 操作列两个 xs 按钮实测占 ~116px（含单元格内边距），120px 刚好一行放下。 -->
+                <th class="u-center" style="width: 120px">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -1372,10 +1376,11 @@ tr.is-dragging { opacity: .5; }
    整行高亮会被读成"替换它" */
 tr.is-drop-target > td { border-top: 2px solid var(--foreground); }
 
-/* 频道列表弹窗：URL 列的最小宽度 */
-.ch-url-col { min-width: 220px; }
+/* 频道列表弹窗：URL 列的最小宽度。直播源 URL 普遍一长串，
+   加宽到 340px 才能少折行、少出横向滚动条。 */
+.ch-url-col { min-width: 340px; }
 
-/* 窄屏（手机竖屏）再收一档：上面那条 220px 会让 URL 列整体落到视口右侧之外 */
+/* 窄屏（手机竖屏）再收一档：上面那条 340px 会让 URL 列整体落到视口右侧之外 */
 @media (max-width: 640px) {
   .ch-url-col { min-width: 260px; }
   /* 频道源表格：手机端只保留 名称 / 最后更新时间 / 状态 / 操作 四列，
