@@ -103,7 +103,7 @@ async function del(id) {
             <thead>
               <tr>
                 <th class="u-center" style="width: 160px">名称</th>
-                <th>url</th>
+                <th class="col-hide-mobile">url</th>
                 <th class="u-center" style="width: 160px">更新时间</th>
                 <th class="u-center" style="width: 80px">状态</th>
                 <th class="u-center" style="width: 170px">操作</th>
@@ -118,7 +118,7 @@ async function del(id) {
               </tr>
               <tr v-for="e in list" :key="e.id" class="is-editable" title="双击编辑该 EPG 源" v-rowtap="() => openEdit(e)">
                 <td class="u-center">{{ e.name }}</td>
-                <td class="u-text-sm" style="word-break: break-all">
+                <td class="u-text-sm col-hide-mobile" style="word-break: break-all">
                   <a :href="e.url" target="_blank" rel="noopener">{{ e.url }}</a>
                 </td>
                 <td class="u-center u-text-sm">{{ e.lastTimeStr }}</td>
@@ -164,3 +164,11 @@ async function del(id) {
     </AppModal>
   </div>
 </template>
+
+<style scoped>
+/* 窄屏（手机竖屏）：EPG源表格只保留 名称 / 更新时间 / 状态 / 操作 四列，
+   url 列整列隐藏（编辑弹窗里 url 选项仍然保留，不受影响）。 */
+@media (max-width: 640px) {
+  .col-hide-mobile { display: none; }
+}
+</style>
