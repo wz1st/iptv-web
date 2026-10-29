@@ -752,12 +752,12 @@ const TYPE_LABEL = {
               <thead>
                 <tr>
                   <th class="u-center" style="width: 120px">名称</th>
-                  <th>url</th>
+                  <th class="col-hide-mobile">url</th>
                   <th class="u-center" style="width: 150px">最后更新时间</th>
-                  <th class="u-center" style="width: 90px">自动分组</th>
-                  <th class="u-center" style="width: 90px">自动去重</th>
-                  <th class="u-center" style="width: 130px">更新间隔</th>
-                  <th class="u-center" style="width: 90px">自动更新</th>
+                  <th class="u-center col-hide-mobile" style="width: 90px">自动分组</th>
+                  <th class="u-center col-hide-mobile" style="width: 90px">自动去重</th>
+                  <th class="u-center col-hide-mobile" style="width: 130px">更新间隔</th>
+                  <th class="u-center col-hide-mobile" style="width: 90px">自动更新</th>
                   <th class="u-center" style="width: 80px">状态</th>
                   <th class="u-center" style="width: 170px">操作</th>
                 </tr>
@@ -777,14 +777,14 @@ const TYPE_LABEL = {
                   v-rowtap="() => openEditList(cl)"
                 >
                   <td class="u-center">{{ cl.name }}</td>
-                  <td class="u-text-sm" style="word-break: break-all">
+                  <td class="u-text-sm col-hide-mobile" style="word-break: break-all">
                     <a :href="cl.url" target="_blank" rel="noopener">{{ cl.url }}</a>
                   </td>
                   <td class="u-center u-text-sm">{{ cl.latestTime }}</td>
-                  <td class="u-center">{{ !!(cl.autoCategory) ? '启用' : '关闭' }}</td>
-                  <td class="u-center">{{ !!(cl.dedup) ? '启用' : '关闭' }}</td>
+                  <td class="u-center col-hide-mobile">{{ !!(cl.autoCategory) ? '启用' : '关闭' }}</td>
+                  <td class="u-center col-hide-mobile">{{ !!(cl.dedup) ? '启用' : '关闭' }}</td>
                   <!-- 更新间隔：按源独立。以「小时」呈现，失焦/回车换算成秒提交。 -->
-                  <td class="u-center" @dblclick.stop>
+                  <td class="u-center col-hide-mobile" @dblclick.stop>
                     <div class="ui-inline u-gap-4">
                       <input
                         class="ui-input ui-input--sm"
@@ -800,7 +800,7 @@ const TYPE_LABEL = {
                       <span class="u-text-sm u-text-2">小时</span>
                     </div>
                   </td>
-                  <td class="u-center" @dblclick.stop>
+                  <td class="u-center col-hide-mobile" @dblclick.stop>
                     <Switch
                       :model-value="!!(cl.auto)"
                       :aria-label="!!(cl.auto) ? '点击关闭自动更新' : '点击开启自动更新'"
@@ -922,16 +922,15 @@ const TYPE_LABEL = {
                   <!-- 「中转访问」列只在"已授权 && 全局中转已开"时存在（showProxy）。
                        列会消失，所以下面两处 colspan 必须跟着算，别写死 7。 -->
                   <th v-if="showProxy" class="u-center" style="width: 90px">中转访问</th>
-                  <th class="u-center" style="width: 110px">频道重命名</th>
                   <th class="u-center" style="width: 240px">操作</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-if="loading">
-                  <td :colspan="showProxy ? 7 : 6" class="ui-table__status"><span class="ui-spinner" />正在加载频道分组…</td>
+                  <td :colspan="showProxy ? 6 : 5" class="ui-table__status"><span class="ui-spinner" />正在加载频道分组…</td>
                 </tr>
                 <tr v-else-if="!categories.length">
-                  <td :colspan="showProxy ? 7 : 6" class="ui-table__empty">当前未有频道分组数据</td>
+                  <td :colspan="showProxy ? 6 : 5" class="ui-table__empty">当前未有频道分组数据</td>
                 </tr>
                 <tr
                   v-for="c in categories"
@@ -978,13 +977,6 @@ const TYPE_LABEL = {
                       :disabled="isAutoType(c)"
                       :aria-label="isAutoType(c) ? '聚合分组固定开启中转，不可关闭' : (!!(c.proxy) ? '点击关闭中转访问' : '点击开启中转访问')"
                       @update:model-value="toggleCaFlag(c, 'proxy')"
-                    />
-                  </td>
-                  <td class="u-center" @dblclick.stop>
-                    <Switch
-                      :model-value="!!(c.autoRename)"
-                      :aria-label="!!(c.autoRename) ? '点击关闭频道重命名' : '点击开启频道重命名'"
-                      @update:model-value="toggleCaFlag(c, 'autoRename')"
                     />
                   </td>
                   <td class="u-center" @dblclick.stop>
@@ -1385,6 +1377,10 @@ tr.is-drop-target > td { border-top: 2px solid var(--foreground); }
 
 /* 窄屏（手机竖屏）再收一档：上面那条 220px 会让 URL 列整体落到视口右侧之外 */
 @media (max-width: 640px) {
-  .ch-url-col { min-width: 170px; }
+  .ch-url-col { min-width: 260px; }
+  /* 频道源表格：手机端只保留 名称 / 最后更新时间 / 状态 / 操作 四列，
+     其余（url / 自动分组 / 自动去重 / 更新间隔 / 自动更新）整列隐藏。
+     编辑弹窗里这些选项仍然保留，不受影响。 */
+  .col-hide-mobile { display: none; }
 }
 </style>

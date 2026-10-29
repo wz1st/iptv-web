@@ -252,6 +252,10 @@ export const MYTV_ROUTES = {
   // 上传编译基底 APK（multipart，字段名 apkfile）：包名须与镜像内底包一致，
   // 版本号从包里提取成基底版本（详见 service.UploadMytvBaseApk）
   uploadBaseApk: '/api/clientMyTV/uploadBaseApk',
+  // 「测试APK地址」：探测 mytv 独立连接地址是否可达（只读、不落盘、不触发编译）
+  testUrl: '/api/clientMyTV/testUrl',
+  // 只把 mytv 连接地址落盘（写 config.yml），不触发编译：测试通过或 IPv6 假阴性强制保存时调用
+  saveUrl: '/api/clientMyTV/saveUrl',
 }
 
 /** SSL 证书（/api/ssl）—— 证书落在 /config/cert，开关落在 config.yml 的 ssl 段 */

@@ -137,6 +137,71 @@ function onUrlTap() {
   if (urlLocked.value && isCoarsePointer()) unlockUrl()
 }
 
+/* ---------------- 「测试APK地址」 ----------------
+ * mytv 连接地址是**独立的**（cfg.MyTV.ServerUrl），不与清和壳共用；
+ * 编译时同样只在站点根补 /apk，所以这里不要求填 path —— 填了当场剥掉并提示。
+ * 顺序与清和壳一致：先测后存（测试通过才把地址落盘，不触发编译）。 */
+const testing = ref(false)
+
+/* 剥掉 scheme 之后的 path，返回 {base, path}；path 是空串表示没填。 */
+function splitUrlPath(raw) {
+  const s = (raw || '').trim().replace(/\/+$/, '')
+  const m = s.match(/^([a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^/?#]*)(.*)$/)
+  if (!m) return { base: s, path: '' }
+  return { base: m[1], path: m[2] || '' }
+}
+
+/* 有 path 时提示"无需填写路径"，并把输入框改成裸地址。返回剥后的地址。 */
+function normalizeUrlInput() {
+  const { base, path } = splitUrlPath(serverUrl.value)
+  if (path) {
+    notify(`无需填写路径，已自动去掉「${path}」（编译时会自动补 /apk）`, 'warning', 4000)
+    serverUrl.value = base
+  }
+  return base
+}
+
+// 「测试APK地址」：探测可达性，并按结果落盘（不触发编译）。
+async function testApkUrl() {
+  if (testing.value) return
+  const base = normalizeUrlInput()
+  if (!base) { notify('请先填写APK连接地址', 'warning'); return }
+
+  testing.value = true
+  try {
+    const res = await post(MYTV_ROUTES.testUrl, { serverUrl: base })
+    if (res?.code >= 1) {
+      const d0 = res.data || {}
+      const extra = d0.probeUrl ? `（已按 ${d0.shell || 'MyTV'} 规则测试 ${d0.probeUrl}）` : ''
+      notify((res.msg || '连接正常') + extra, 'success', 4000)
+      serverUrl.value = base
+      await saveServerUrl()
+    } else if (res?.data?.ipv6 || res?.type === 'ipv6') {
+      const ok = await confirm(
+        '当前因地址为ipv6导致测试失败可能无法连接，是否强制保存？',
+        { okText: '强制保存', okVariant: 'warning' }
+      )
+      if (ok) {
+        serverUrl.value = base
+        await saveServerUrl()
+        notify('已强制保存该地址（未通过连通性测试，客户端可能有 IPv6 可连）', 'warning', 5000)
+      } else {
+        notify(res?.msg || 'IPv6 地址连通性测试失败', 'danger', 5000)
+      }
+    } else {
+      notify(res?.msg || '连接测试失败', 'danger', 5000)
+    }
+  } finally {
+    testing.value = false
+  }
+}
+
+/* 把当前 mytv APK连接地址落到 config.yml（只落盘，不触发编译）。 */
+async function saveServerUrl() {
+  const res = await post(MYTV_ROUTES.saveUrl, { serverUrl: serverUrl.value })
+  if (res?.code !== 1) notify(res?.msg || '地址保存失败', 'danger', 3000)
+}
+
 /* ---------------- 编译基底：上传替换底包 ----------------
    底包落 /config/mytv（持久卷），**不覆盖镜像里的 /app/mytv** —— 那是镜像层，
    重拉镜像就还原，用户白传一场。上传后引擎编译取的就是这份。
@@ -291,18 +356,29 @@ onBeforeUnmount(stopPolling)
         <!-- APK 连接地址：mytv 独立，双击输入框解锁后可改（不与清和壳共用） -->
         <div class="ui-field">
           <label class="ui-field__label">APK连接地址</label>
-          <input
-            v-model="serverUrl"
-            class="ui-input"
-            :class="{ 'is-unlocked': !urlLocked }"
-            type="text"
-            placeholder="APK连接地址"
-            :readonly="urlLocked"
-            :title="urlLocked ? '双击（触屏单击）可解锁修改' : '已解锁，可修改'"
-            @dblclick="unlockUrl"
-            @click="onUrlTap"
-          />
+          <div class="ui-inline">
+            <input
+              v-model="serverUrl"
+              class="ui-input"
+              :class="{ 'is-unlocked': !urlLocked }"
+              type="text"
+              placeholder="如 http://10.10.220.162:18160（不要带路径）"
+              style="flex: 1 1 160px; min-width: 0"
+              :readonly="urlLocked"
+              :title="urlLocked ? '双击（触屏单击）可解锁修改' : '已解锁，可修改'"
+              @dblclick="unlockUrl"
+              @click="onUrlTap"
+            />
+            <button
+              class="ui-btn ui-btn--primary"
+              type="button"
+              style="margin: 0"
+              :disabled="testing"
+              @click="testApkUrl"
+            >{{ testing ? '测试中…' : '测试APK地址' }}</button>
+          </div>
           <small class="ui-help">提示：这是 MyTV 客户端独立的连接地址，与清和壳客户端互不影响。双击输入框解锁后可修改（触屏设备单击即可），解锁时自动填充当前后台地址；若内网访问，请手动填写外网地址。</small>
+          <small class="ui-help">「测试APK地址」探测连接是否可达：<strong>测试通过会立即保存地址</strong>；若地址为 IPv6 而服务器容器无 IPv6 导致测试失败，会提示是否「强制保存」。</small>
         </div>
 
         <div class="ui-field" style="margin-top: 6px">
@@ -456,7 +532,7 @@ onBeforeUnmount(stopPolling)
 /* ---------- 版本卡片：新版本 / 当前版本（与清和壳面板同款） ---------- */
 .ver-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 14px;
   margin-top: 16px;
 }

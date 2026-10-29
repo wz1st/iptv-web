@@ -497,20 +497,21 @@ onBeforeUnmount(stopPolling)
     <div class="ui-card">
       <div class="ui-card__header"><h4>编译配置</h4></div>
       <div class="ui-card__body tv-split">
-        <div class="tv-split__form">
+        <!-- ============ 左/上：编译配置主体（连接地址 + 应用名/图标/背景） ============ -->
+        <div class="tv-split__top">
           <!-- APK 连接地址：双击输入框解锁后可改。
                path 不用填 —— 编译时后端按壳自动补（清和 /apk、骆驼 /apk/lt），
                填了反而会被剥掉并提示。 -->
           <div class="ui-field">
             <label class="ui-field__label">APK连接地址</label>
-            <div class="ui-inline">
+            <div class="ui-inline shell-url">
               <input
                 v-model="serverUrl"
                 class="ui-input"
                 :class="{ 'is-unlocked': !urlLocked }"
                 type="text"
                 placeholder="如 http://10.10.220.162:18160（不要带路径）"
-                style="flex: 1; min-width: 200px"
+                style="flex: 1 1 160px; min-width: 0"
                 :readonly="urlLocked"
                 :title="urlLocked ? '双击（触屏单击）可解锁修改' : '已解锁，可修改'"
                 @dblclick="unlockUrl"
@@ -529,14 +530,14 @@ onBeforeUnmount(stopPolling)
             </small>
           </div>
 
-          <!-- 应用名 / 图标 / 背景同一行：这三件都是"客户端长什么样"，
-               挤成上下两行只让表单更长，不增加信息 -->
-          <div class="ui-inline" style="margin-top: 6px; align-items: flex-start">
-            <div class="ui-field" style="flex: 1; min-width: 150px">
+          <!-- 应用名 / 图标 / 背景：桌面端三件同排；手机端应用名独占一行、
+               图标上传与背景上传同排（见 .shell-* 的媒体查询）。 -->
+          <div class="ui-inline shell-fields" style="margin-top: 6px; align-items: flex-start">
+            <div class="ui-field shell-name" style="flex: 1; min-width: 150px">
               <label class="ui-field__label">应用名</label>
               <input v-model="form.appName" class="ui-input" type="text" placeholder="应用名" />
             </div>
-            <div class="ui-field" style="flex: none">
+            <div class="ui-field shell-icon" style="flex: none">
               <label class="ui-field__label">应用图标</label>
               <div class="ui-inline" style="gap: 6px">
                 <label class="ui-btn ui-btn--primary" style="margin: 0">
@@ -549,7 +550,7 @@ onBeforeUnmount(stopPolling)
                 </div>
               </div>
             </div>
-            <div class="ui-field" style="flex: 2; min-width: 260px">
+            <div class="ui-field shell-bj" style="flex: 2; min-width: 260px">
               <label class="ui-field__label">背景图片</label>
               <div class="ui-inline" style="gap: 6px">
                 <label class="ui-btn ui-btn--primary" style="margin: 0">
@@ -570,10 +571,32 @@ onBeforeUnmount(stopPolling)
               </div>
             </div>
           </div>
-          <small class="ui-help">
+          <small class="ui-help shell-hint">
             提示：图片仅支持PNG格式，不超过800KB；多张背景图在客户端随机显示，点缩略图可切换右侧预览。
           </small>
+        </div>
 
+        <!-- ============ 模拟智能电视：实时预览应用名 / 图标 / 背景 ============
+             桌面端作为右栏（跨两行）；手机端紧跟在「上传按钮描述」下方（top → preview → bottom）。 -->
+        <aside class="tv-split__preview">
+          <div class="tv">
+            <div class="tv__screen" :style="tvScreenStyle">
+              <div class="tv__launcher">
+                <div class="tv__icon">
+                  <img :src="tvIconUrl" alt="" />
+                </div>
+                <div class="tv__name">{{ form.appName || '应用名称' }}</div>
+              </div>
+            </div>
+            <div class="tv__stand" />
+          </div>
+          <div class="tv__hint">
+            模拟智能电视预览 · 背景 {{ bjList.length }} 张随机显示<span v-if="bjList.length > 1">（点缩略图切换预览）</span>
+          </div>
+        </aside>
+
+        <!-- ============ 右/下：编译基底（底包）+ 版本卡片 ============ -->
+        <div class="tv-split__bottom">
           <!-- ============ 编译基底（底包）============ -->
           <!--
             基包 = 编译的起点。编译时服务端会解包它、改掉服务端链接 / 应用名 / 版本号，
@@ -667,24 +690,6 @@ onBeforeUnmount(stopPolling)
             提示：「编译」只产出待发布安装包，点「发布」才把新包替换上去，下载页与客户端自升级同时切到新版本。
           </small>
         </div>
-
-        <!-- ============ 模拟智能电视：实时预览应用名 / 图标 / 背景 ============ -->
-        <aside class="tv-split__preview">
-          <div class="tv">
-            <div class="tv__screen" :style="tvScreenStyle">
-              <div class="tv__launcher">
-                <div class="tv__icon">
-                  <img :src="tvIconUrl" alt="" />
-                </div>
-                <div class="tv__name">{{ form.appName || '应用名称' }}</div>
-              </div>
-            </div>
-            <div class="tv__stand" />
-          </div>
-          <div class="tv__hint">
-            模拟智能电视预览 · 背景 {{ bjList.length }} 张随机显示<span v-if="bjList.length > 1">（点缩略图切换预览）</span>
-          </div>
-        </aside>
       </div>
     </div>
 
@@ -733,7 +738,7 @@ onBeforeUnmount(stopPolling)
 /* ---------- 版本卡片：新版本 / 当前版本 ---------- */
 .ver-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 14px;
   margin-top: 16px;
 }
@@ -775,18 +780,48 @@ onBeforeUnmount(stopPolling)
 .ver-dl { text-decoration: none; }
 
 /* ---------- 右侧：模拟智能电视 ---------- */
+/* 桌面：左表单 + 右预览（预览跨两行 sticky）；手机：单列堆叠，
+   预览紧跟在「上传按钮描述」下方（top → preview → bottom）。 */
 .tv-split {
-  display: flex;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  display: grid;
   gap: 22px;
+  align-items: start;
 }
-.tv-split__form { flex: 1 1 520px; min-width: 320px; }
-.tv-split__preview {
-  flex: 0 0 auto;
-  width: 336px;
-  position: sticky;
-  top: 12px;
+.tv-split__top,
+.tv-split__bottom { min-width: 0; }
+
+@media (min-width: 921px) {
+  .tv-split {
+    grid-template-columns: minmax(0, 1fr) 336px;
+    grid-template-areas: "top preview" "bottom preview";
+  }
+  .tv-split__top { grid-area: top; }
+  .tv-split__bottom { grid-area: bottom; }
+  .tv-split__preview {
+    grid-area: preview;
+    position: sticky;
+    top: 12px;
+    width: 336px;
+  }
+}
+
+@media (max-width: 920px) {
+  .tv-split {
+    grid-template-columns: 1fr;
+    grid-template-areas: "top" "preview" "bottom";
+  }
+  .tv-split__top { grid-area: top; }
+  .tv-split__bottom { grid-area: bottom; }
+  .tv-split__preview {
+    grid-area: preview;
+    width: 100%;
+    position: static;
+  }
+  /* 应用名独占一行，图标上传与背景上传同排 */
+  .shell-name { flex: 1 1 100% !important; }
+  .shell-icon { flex: 1 1 38% !important; }
+  .shell-bj { flex: 1 1 56% !important; min-width: 0 !important; }
+  .shell-url .ui-input { min-width: 0; }
 }
 .tv {
   padding: 10px 10px 14px;
