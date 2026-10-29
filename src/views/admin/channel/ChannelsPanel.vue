@@ -737,7 +737,7 @@ const TYPE_LABEL = {
 
         <div class="ui-card__toolbar">
           <div class="ui-inline u-gap-8">
-            <span class="u-text-sm u-text-2">更新间隔与自动更新按源独立设置（默认 2 小时）</span>
+            <span class="u-text-sm u-text-2">默认 2 小时</span>
           </div>
 
           <div class="ui-inline u-gap-8">
@@ -858,7 +858,6 @@ const TYPE_LABEL = {
             />
             <span class="u-text-sm u-text-2">小时（默认 2）</span>
           </div>
-          <small class="ui-help">该源自动抓取列表的周期，按源独立；列表页那一格可以随时直接改，「自动更新」开关也在那里</small>
         </div>
 
         <div class="ui-field">

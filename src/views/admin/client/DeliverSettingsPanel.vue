@@ -148,6 +148,9 @@ onMounted(load)
               <div class="ui-field" style="flex: none">
                 <label class="ui-field__label">客户端授权</label>
                 <AppSwitch v-model="needAuthor" @change="onNeedAuthorChange" />
+                <small class="ui-help">
+                  未授权客户端无法登录
+                </small>
               </div>
             </div>
             <small class="ui-help">
