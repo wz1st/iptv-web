@@ -29,13 +29,15 @@ export function usePageData(loader, initialQuery = {}) {
 // 提交动作 —— 一个动作一条路由，请求体是 JSON。
 // opts.noLoading：调用方自己有按钮级 loading（如客户端「在线升级基底」那个几分钟的
 // 下载），再叠一层全屏遮罩只会挡住用户刚点的那个按钮 —— 这种场景传 true 关掉。
+// opts.reload：成功后执行。**会把响应体原样传进去** —— 有些动作（如「手动绑定频道」）
+// 要拿后端回传的数据就地更新某一行，不必整页重取。
 export async function submitAction(url, body = {}, opts = {}) {
   if (!opts.noLoading) loadingShow()
   try {
     const res = await post(url, body)
     if (!opts.silent) displayResult(res)
     if (res.code >= 1 && typeof opts.reload === 'function') {
-      await opts.reload()
+      await opts.reload(res)
     }
     return res
   } catch (e) {

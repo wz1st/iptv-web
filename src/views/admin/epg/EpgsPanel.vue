@@ -130,17 +130,25 @@ async function openBind(e) {
   bindLoading.value = true
   try {
     const res = await post(A.bindable, { id: Number(bindEpgId.value) || 0 })
-    // 后端一次给全三样（dto.EpgBindableDto）：
+    // 后端一次给全四样（dto.EpgBindableDto）：
     //   channels  = 库里现存的频道名（黑名单里的已剔除）；
-    //   selected  = 当前已经绑到这个 EPG 的频道名（拖拽源）；
+    //   selected  = 这个 EPG 认领的全部台名（手动 ∪ 自动 − 黑名单）—— 拖拽源；
+    //   manual    = 手动名单（用户手动指定的台）—— 多选框的预选；
     //   blacklist = 这个 EPG 的排除名单（可能有库里没有的名字）。
+    //
+    // ★selected 与列表页「绑定频道」列同源（后端 until.EpgBoundNames）——
+    // 否则会出现"列表说绑着、弹窗说没绑"（实测：手动名单里的台库里没有对应频道时）。
+    //
+    // ★多选框预选的是 manual 而不是 selected：
+    // 预选成"全部认领的台"的话，用户不改直接点确定，
+    // 就把自动匹配上的台固化成手动名单了（content 优先级最高，
+    // 之后自动规则改了也不再生效）。
     const d = res?.data || {}
     const channels = Array.isArray(d.channels) ? d.channels : []
     chOptions.value = channels.map((name) => ({ name, value: name }))
     boundList.value = Array.isArray(d.selected) ? d.selected : []
     blacklist.value = Array.isArray(d.blacklist) ? d.blacklist : []
-    // 手动绑定名单 = 已绑定的那些（用户可以在此基础上增删）。
-    bindChList.value = boundList.value.slice()
+    bindChList.value = Array.isArray(d.manual) ? d.manual : []
   } catch { /* 已处理 */ } finally {
     bindLoading.value = false
   }
@@ -154,8 +162,27 @@ async function saveBind() {
       channels: bindChList.value.join(','),
       blacklist: blacklist.value.join(','),
     },
-    { reload: async () => { showBind.value = false; await load() } }
+    // ★只更新**这一行**，不整页刷新。
+    // 整页刷新会把滚动位置、搜索条件和页码全冲掉，用户刚操作完又得从头找。
+    // 后端把这一行当前的绑定名单一起回传了（data.bound），
+    // 用它就地覆盖表格里那一行的「绑定频道」列。
+    { reload: async (res) => { showBind.value = false; applyBoundToRow(res) } }
   )
+}
+
+/**
+ * 把后端回传的绑定名单就地写进表格里对应的那一行。
+ *
+ * 后端返回的 data.bound 是「手动名单 ∪ 自动结果 − 黑名单」之后的展示串，
+ * 与列表接口用的是同一个函数 —— 两边口径一致，
+ * "保存后立刻看到的那一行"和"刷新页面看到的"才对得上。
+ */
+function applyBoundToRow(res) {
+  const id = Number(res?.data?.id ?? bindEpgId.value)
+  const bound = res?.data?.bound
+  if (!id || typeof bound !== 'string') return
+  const row = epgs.value.find((e) => Number(e.id) === id)
+  if (row) row.content = bound
 }
 
 function clearBindSelection() { bindChList.value = [] }
@@ -224,7 +251,10 @@ const delNotFrom = async () => {
   if (!(await confirm('确定要删除无来源EPG吗？', { okVariant: 'danger', okText: '确定' }))) return
   await submitAction(A.deleteUnbound, {}, { reload: load })
 }
-const bindChannel = () => submitAction(A.bindChannel, {}, { reload: load })
+// 自动绑定 = 全量重算，后台跑（要扫全部频道 + 重写绑定名单 + 作废缓存），
+// 前端这边**不刷新表格**：刷出来的是重算前的旧名单，用户会以为"点了没反应"。
+// 后端提示语已说明"后台运行中，请稍后刷新查看结果"，用户自己刷新即可。
+const bindChannel = () => submitAction(A.bindChannel, {})
 const clearBind = async () => {
   if (!(await confirm('确定要清空全部绑定吗？将解除所有频道的 EPG 绑定并清空手动绑定名单。', { okVariant: 'danger' }))) return
   await submitAction(A.clearBind, {}, { reload: load })
