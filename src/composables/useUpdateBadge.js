@@ -15,7 +15,7 @@
 //   qh    清和壳编译基底
 //   lt    骆驼壳编译基底
 //   mytv  MyTV 编译基底（仅授权时参与红点/提醒）
-import { reactive } from 'vue'
+import { reactive, computed } from 'vue'
 import { post } from '@/api/http'
 import { API } from '@/api/endpoints'
 import { isLic } from '@/utils/site'
@@ -47,6 +47,20 @@ export function hasBadge(k) {
 // 某组件的"更新提醒"是否该显示：有待更新 + 用户还没主动关掉（与红点已读无关）。
 export function tipVisible(k) {
   return visible(k) && !!state.badges[k] && !state.tipsOff[k]
+}
+
+/**
+ * 某个组件的"更新提醒"是否该显示 —— **显式 computed 版**。
+ *
+ * 为什么不用"在模板里直接调 tipVisible(name)"：
+ *   那样"组件订阅了哪些状态"完全押在模板编译器的隐式行为上。
+ *   显式 computed 把依赖关系（badges / tipsOff / 授权状态）写在代码里，
+ *   组件一定会在它们变化时重算 —— 不管调用形式怎么被优化。
+ *
+ * 用法：const shown = useTipVisible(name) ⇒ 模板 v-if="shown"
+ */
+export function useTipVisible(k) {
+  return computed(() => visible(k) && !!state.badges[k] && !state.tipsOff[k])
 }
 
 // 进入对应页面 / tag 时调用：本次登录期内取消该红点（提醒随之保留，直到点 X 或点按钮）。
