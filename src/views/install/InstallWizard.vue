@@ -128,7 +128,7 @@ async function doInstall() {
       <CardFooter class="justify-center border-t pt-6 text-xs text-muted-foreground">
         <span>&copy; {{ year }} {{ siteName }}</span>
         <span class="mx-2 text-border">·</span>
-        <a class="hover:text-foreground" href="https://www.qingh.xyz" target="_blank" rel="noopener">清和博客</a>
+        <a class="hover:text-foreground" href="https://www.wqhe.cn" target="_blank" rel="noopener">清和博客</a>
       </CardFooter>
     </Card>
 
@@ -165,7 +165,7 @@ async function doInstall() {
         <p class="text-xs text-muted-foreground">
           <span>&copy; {{ year }} {{ siteName }}</span>
           <span class="mx-2 text-border">·</span>
-          <a class="hover:text-foreground" href="https://www.qingh.xyz" target="_blank" rel="noopener">清和博客</a>
+          <a class="hover:text-foreground" href="https://www.wqhe.cn" target="_blank" rel="noopener">清和博客</a>
         </p>
       </CardFooter>
     </Card>
@@ -257,7 +257,7 @@ async function doInstall() {
       <CardFooter class="justify-center border-t pt-6 text-xs text-muted-foreground">
         <span>&copy; {{ year }} {{ siteName }}</span>
         <span class="mx-2 text-border">·</span>
-        <a class="hover:text-foreground" href="https://www.qingh.xyz" target="_blank" rel="noopener">清和博客</a>
+        <a class="hover:text-foreground" href="https://www.wqhe.cn" target="_blank" rel="noopener">清和博客</a>
       </CardFooter>
     </Card>
   </div>

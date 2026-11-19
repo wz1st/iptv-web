@@ -200,7 +200,7 @@ async function logout() {
         <div class="mt-auto shrink-0 border-t px-4 py-1.5 text-center text-[11.5px] leading-tight text-muted-foreground">
           <p class="m-0">{{ version }}</p>
           <p class="m-0 mt-0.5 flex justify-center gap-3">
-            <a href="https://www.qingh.xyz" target="_blank" rel="noopener">清和博客</a>
+            <a href="https://www.wqhe.cn" target="_blank" rel="noopener">清和博客</a>
             <!-- 赞助作者：弹窗展示两个收款码（升级日志页已取消，这里不再跳页） -->
             <button
               type="button"

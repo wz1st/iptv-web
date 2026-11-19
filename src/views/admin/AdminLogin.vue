@@ -156,7 +156,7 @@ async function submit() {
         <p class="mt-6 border-t pt-4 text-center text-xs text-muted-foreground">
           <span>&copy; {{ year }} {{ siteName }}</span>
           <span class="mx-2 text-border">·</span>
-          <a class="hover:text-foreground" href="https://www.qingh.xyz" target="_blank" rel="noopener">清和博客</a>
+          <a class="hover:text-foreground" href="https://www.wqhe.cn" target="_blank" rel="noopener">清和博客</a>
           <span class="mx-2 text-border">·</span>
           <a class="hover:text-foreground" href="/">下载APK</a>
         </p>
