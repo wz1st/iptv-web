@@ -2,7 +2,7 @@
 // 可关闭的"更新提醒"小标签：红点 + 文案 + 关闭按钮。
 // 挂在各「检测更新 / 在线升级」按钮右侧；有红点且用户没关过时才显示，
 // 关闭后本次登录期内不再出现（见 composables/useUpdateBadge.js）。
-import { useUpdateBadge } from '@/composables/useUpdateBadge'
+import { useUpdateBadge, useTipVisible } from '@/composables/useUpdateBadge'
 
 const props = defineProps({
   // 组件键：web / engine / qh / lt / mytv
@@ -10,12 +10,15 @@ const props = defineProps({
   text: { type: String, default: '发现新版本，点击按钮即可升级' },
 })
 
-const { tipVisible, dismissTip } = useUpdateBadge()
+const { dismissTip } = useUpdateBadge()
+// 显示与否用**显式 computed**：依赖关系（badges / tipsOff / 授权状态）写在代码里，
+// 不靠模板里隐式调用函数。
+const shown = useTipVisible(props.name)
 </script>
 
 <template>
   <transition name="update-tip-fade">
-    <span v-if="tipVisible(name)" class="update-tip">
+    <span v-if="shown" class="update-tip">
       <span class="update-tip__dot" />
       <span class="update-tip__text">{{ text }}</span>
       <button

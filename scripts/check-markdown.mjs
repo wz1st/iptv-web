@@ -180,7 +180,7 @@ it('图片相对路径同样规范化', () => {
 
 it('站内链接同窗口，外链新窗口', () => {
   need(renderMarkdown('[更新记录](./ChangeLog.md)'), '<a href="/ChangeLog.md">更新记录</a>')
-  need(renderMarkdown('[博客](https://www.qingh.xyz/)'), 'target="_blank"')
+  need(renderMarkdown('[博客](https://www.wqhe.cn/)'), 'target="_blank"')
 })
 
 console.log('\n[5] 其余语法的基本盘')
@@ -220,7 +220,7 @@ it('行内代码', () => {
 
 it('粗体 / 斜体 / 删除线', () => {
   need(renderMarkdown('**粗**'), '<strong>粗</strong>')
-  need(renderMarkdown('*请勿拦截auth.qingh.xyz域名访问*，拦截将无法激活'), '<em>请勿拦截auth.qingh.xyz域名访问</em>')
+  need(renderMarkdown('*请勿拦截auth.wqhe.cn域名访问*，拦截将无法激活'), '<em>请勿拦截auth.wqhe.cn域名访问</em>')
   need(renderMarkdown('~~删~~'), '<del>删</del>')
 })
 
